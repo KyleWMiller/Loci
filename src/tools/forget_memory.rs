@@ -3,15 +3,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ForgetMemoryParams {
-    #[schemars(description = "ID of the memory to delete")]
-    pub id: Option<String>,
+    #[schemars(description = "ID of the memory to forget")]
+    pub memory_id: String,
 
-    #[schemars(description = "Delete all memories matching this type")]
-    pub r#type: Option<String>,
+    #[schemars(description = "Why this memory is being forgotten")]
+    pub reason: Option<String>,
 
-    #[schemars(description = "Delete all memories in this group")]
-    pub group: Option<String>,
-
-    #[schemars(description = "Must be true to confirm deletion. Safety gate.")]
-    pub confirm: Option<bool>,
+    #[schemars(description = "Permanently delete instead of soft-supersede (default: false)")]
+    pub hard_delete: Option<bool>,
 }

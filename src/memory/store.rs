@@ -227,8 +227,8 @@ fn set_superseded(conn: &Transaction, old_id: &str, new_id: &str) -> Result<()> 
 }
 
 /// Write an entry to the memory_log audit table.
-fn write_audit_log(
-    conn: &Transaction,
+pub(crate) fn write_audit_log(
+    conn: &Connection,
     operation: &str,
     memory_id: &str,
     details: Option<&serde_json::Value>,

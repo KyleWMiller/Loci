@@ -8,6 +8,7 @@ mod tools;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
@@ -26,6 +27,31 @@ enum Command {
         #[command(subcommand)]
         action: ModelAction,
     },
+    /// Search memories from the terminal
+    Search {
+        /// Natural language query
+        query: String,
+    },
+    /// Display memory statistics
+    Stats {
+        /// Filter stats to a specific group
+        #[arg(long)]
+        group: Option<String>,
+    },
+    /// Inspect a memory by ID
+    Inspect {
+        /// Memory ID to inspect
+        id: String,
+    },
+    /// Export all memories as JSON
+    Export,
+    /// Import memories from a JSON file
+    Import {
+        /// Path to JSON file
+        file: PathBuf,
+    },
+    /// Delete all memories (requires confirmation)
+    Reset,
 }
 
 #[derive(Subcommand)]
@@ -59,6 +85,24 @@ async fn main() -> Result<()> {
                 cli::model_download(&config.embedding).await?;
             }
         },
+        Command::Search { query } => {
+            cli::search::search(&config, &query).await?;
+        }
+        Command::Stats { group } => {
+            cli::stats::stats(&config, group.as_deref())?;
+        }
+        Command::Inspect { id } => {
+            cli::inspect::inspect(&config, &id)?;
+        }
+        Command::Export => {
+            cli::export::export(&config)?;
+        }
+        Command::Import { file } => {
+            cli::import::import(&config, &file).await?;
+        }
+        Command::Reset => {
+            cli::reset::reset(&config)?;
+        }
     }
 
     Ok(())

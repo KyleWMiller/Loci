@@ -256,39 +256,74 @@ impl LociTools {
         serde_json::to_string(&response).map_err(|e| format!("serialization failed: {e}"))
     }
 
-    /// Delete one or more memories.
-    #[tool(description = "Delete memories by ID, type, or group. Requires confirm=true as a safety gate.")]
+    /// Forget a memory by ID (soft-supersede or hard delete).
+    #[tool(description = "Forget a memory by ID. Soft delete (default) marks it as superseded. Hard delete permanently removes it from all tables including vectors and FTS index.")]
     async fn forget_memory(
         &self,
-        Parameters(_params): Parameters<ForgetMemoryParams>,
+        Parameters(params): Parameters<ForgetMemoryParams>,
     ) -> Result<String, String> {
-        tracing::info!("forget_memory called (stub)");
-        Ok(serde_json::json!({
-            "status": "not_implemented",
-            "message": "forget_memory is a stub — implementation coming in M5"
+        if params.memory_id.is_empty() {
+            return Err("memory_id must not be empty".into());
+        }
+
+        let hard_delete = params.hard_delete.unwrap_or(false);
+        tracing::info!(
+            id = %params.memory_id,
+            hard_delete = hard_delete,
+            "forget_memory called"
+        );
+
+        let db = Arc::clone(&self.db);
+        let memory_id = params.memory_id;
+        let reason = params.reason;
+
+        let result = tokio::task::spawn_blocking(move || {
+            let mut conn = db
+                .lock()
+                .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+            crate::memory::forget::forget_memory(
+                &mut conn,
+                &memory_id,
+                reason.as_deref(),
+                hard_delete,
+            )
         })
-        .to_string())
+        .await
+        .map_err(|e| format!("task failed: {e}"))?
+        .map_err(|e| format!("forget failed: {e}"))?;
+
+        tracing::info!(
+            id = %result.id,
+            hard_deleted = result.hard_deleted,
+            "memory forgotten"
+        );
+
+        serde_json::to_string(&result).map_err(|e| format!("serialization failed: {e}"))
     }
 
     /// Get statistics about the memory store.
-    #[tool(description = "Get memory store statistics: counts by type, groups, storage size.")]
+    #[tool(description = "Get memory store statistics: counts by type and scope, entity relations count, storage size, oldest/newest timestamps.")]
     async fn memory_stats(
         &self,
-        Parameters(_params): Parameters<MemoryStatsParams>,
+        Parameters(params): Parameters<MemoryStatsParams>,
     ) -> Result<String, String> {
-        tracing::info!("memory_stats called (stub)");
-        Ok(serde_json::json!({
-            "total_memories": 0,
-            "by_type": {
-                "episodic": 0,
-                "semantic": 0,
-                "procedural": 0,
-                "entity": 0
-            },
-            "groups": [],
-            "message": "memory_stats is a stub — implementation coming in M5"
+        tracing::info!("memory_stats called");
+
+        let db = Arc::clone(&self.db);
+        let group = params.group;
+        let db_path = self.config.resolved_db_path();
+
+        let result = tokio::task::spawn_blocking(move || {
+            let conn = db
+                .lock()
+                .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+            crate::memory::stats::memory_stats(&conn, group.as_deref(), Some(&db_path))
         })
-        .to_string())
+        .await
+        .map_err(|e| format!("task failed: {e}"))?
+        .map_err(|e| format!("stats failed: {e}"))?;
+
+        serde_json::to_string(&result).map_err(|e| format!("serialization failed: {e}"))
     }
 
     /// Inspect a specific memory by ID.

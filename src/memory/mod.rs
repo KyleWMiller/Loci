@@ -1,5 +1,7 @@
+pub mod forget;
 pub mod relations;
 pub mod search;
+pub mod stats;
 pub mod store;
 pub mod types;
 
