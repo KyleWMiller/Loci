@@ -1,0 +1,26 @@
+# Loci Configuration
+# Copy to ~/.loci/config.toml and modify as needed.
+# All values shown are defaults.
+
+[server]
+transport = "stdio"                       # "stdio" | "sse" (SSE is M7+)
+log_level = "info"                        # "error" | "warn" | "info" | "debug" | "trace"
+
+[storage]
+db_path = "~/.loci/memory.db"             # Path to SQLite database
+default_group = "default"                 # Default memory group
+
+[embedding]
+provider = "local"                        # "local" | "voyage" | "openai"
+model = "all-MiniLM-L6-v2"               # ONNX embedding model name
+cache_dir = "~/.loci/models"              # Directory for cached model files
+
+[retrieval]
+default_max_results = 5                   # Max results per recall_memory call
+preload_token_budget = 2000               # Token budget for preloaded context
+recall_token_budget = 4000                # Token budget for recall responses
+rrf_k = 60                               # Reciprocal Rank Fusion k parameter
+dedup_threshold = 0.92                    # Cosine similarity threshold for deduplication
+
+[maintenance]
+enabled = false                           # Enable automatic maintenance (decay, compaction)
