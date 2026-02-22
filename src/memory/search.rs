@@ -19,6 +19,8 @@ pub struct SearchResult {
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relations: Option<Vec<RelationEntry>>,
 }
 
 /// A compact summary result for progressive disclosure.
@@ -90,13 +92,13 @@ pub struct InspectMemory {
     pub metadata: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RelationEntry {
     pub predicate: String,
     pub object: RelationTarget,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct RelationTarget {
     pub id: String,
     #[serde(rename = "type")]
@@ -225,10 +227,15 @@ pub fn recall_by_query(
     let returned_ids: Vec<&str> = budgeted.iter().map(|(m, _)| m.id.as_str()).collect();
     update_access(conn, &returned_ids)?;
 
-    // 8. Build response
-    let results: Vec<SearchResult> = budgeted
-        .into_iter()
-        .map(|(mem, score)| SearchResult {
+    // 8. Build response with entity-aware relation fetching
+    let mut results: Vec<SearchResult> = Vec::with_capacity(budgeted.len());
+    for (mem, score) in budgeted {
+        let relations = if mem.memory_type == "entity" {
+            fetch_outbound_relations(conn, &mem.id).unwrap_or(None)
+        } else {
+            None
+        };
+        results.push(SearchResult {
             id: mem.id,
             memory_type: mem.memory_type,
             content: mem.content,
@@ -236,8 +243,9 @@ pub fn recall_by_query(
             score,
             created_at: mem.created_at,
             metadata: mem.metadata,
-        })
-        .collect();
+            relations,
+        });
+    }
 
     Ok(RecallResponse {
         results,
@@ -258,6 +266,11 @@ pub fn recall_by_ids(conn: &Connection, ids: &[String]) -> Result<RecallResponse
     for id in ids {
         if let Some(mem) = memories.get(id.as_str()) {
             token_sum += mem.content.len() / 4;
+            let relations = if mem.memory_type == "entity" {
+                fetch_outbound_relations(conn, &mem.id).unwrap_or(None)
+            } else {
+                None
+            };
             results.push(SearchResult {
                 id: mem.id.clone(),
                 memory_type: mem.memory_type.clone(),
@@ -266,6 +279,7 @@ pub fn recall_by_ids(conn: &Connection, ids: &[String]) -> Result<RecallResponse
                 score: 1.0, // No search score for direct hydration
                 created_at: mem.created_at.clone(),
                 metadata: mem.metadata.clone(),
+                relations,
             });
         }
     }
@@ -345,26 +359,7 @@ pub fn inspect_memory(
 
     // Fetch relations
     let relations = if include_relations {
-        let mut stmt = conn.prepare(
-            "SELECT er.predicate, m.id, m.type, m.content \
-             FROM entity_relations er \
-             JOIN memories m ON er.object_id = m.id \
-             WHERE er.subject_id = ?1",
-        )?;
-        let rows = stmt
-            .query_map(params![memory_id], |row| {
-                let content: String = row.get(3)?;
-                Ok(RelationEntry {
-                    predicate: row.get(0)?,
-                    object: RelationTarget {
-                        id: row.get(1)?,
-                        memory_type: row.get(2)?,
-                        preview: truncate_preview(&content, 100),
-                    },
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-        Some(rows)
+        fetch_outbound_relations(conn, memory_id)?
     } else {
         None
     };
@@ -399,6 +394,41 @@ pub fn inspect_memory(
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/// Fetch outbound relations for a memory.
+///
+/// Returns `Some(vec)` if the memory has relations (possibly empty),
+/// or `None` if there are no relations at all (for cleaner serialization).
+fn fetch_outbound_relations(
+    conn: &Connection,
+    memory_id: &str,
+) -> Result<Option<Vec<RelationEntry>>> {
+    let mut stmt = conn.prepare(
+        "SELECT er.predicate, m.id, m.type, m.content \
+         FROM entity_relations er \
+         JOIN memories m ON er.object_id = m.id \
+         WHERE er.subject_id = ?1",
+    )?;
+    let rows: Vec<RelationEntry> = stmt
+        .query_map(params![memory_id], |row| {
+            let content: String = row.get(3)?;
+            Ok(RelationEntry {
+                predicate: row.get(0)?,
+                object: RelationTarget {
+                    id: row.get(1)?,
+                    memory_type: row.get(2)?,
+                    preview: truncate_preview(&content, 100),
+                },
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if rows.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(rows))
+    }
+}
 
 /// Vector KNN search via sqlite-vec.
 fn vector_search(
@@ -908,6 +938,7 @@ mod tests {
                 score: 0.03,
                 created_at: "2026-01-01T00:00:00Z".to_string(),
                 metadata: None,
+                relations: None,
             }],
             total_matched: 1,
             token_estimate: 35,
@@ -1086,5 +1117,89 @@ mod tests {
         assert_eq!(escape_fts_query("rust OR python"), "\"rust\" \"OR\" \"python\"");
         assert_eq!(escape_fts_query("  spaces  "), "\"spaces\"");
         assert_eq!(escape_fts_query(""), "");
+    }
+
+    #[test]
+    fn test_entity_aware_search() {
+        let mut conn = test_db();
+
+        // Create two entity memories
+        let id_person = insert_test_memory(
+            &mut conn,
+            "John Smith is an engineer",
+            MemoryType::Entity,
+            Scope::Global,
+            "default",
+            1.0,
+            &embedding_a(),
+        );
+        let id_company = insert_test_memory(
+            &mut conn,
+            "Acme Corp is a technology company",
+            MemoryType::Entity,
+            Scope::Global,
+            "default",
+            1.0,
+            &embedding_b(),
+        );
+
+        // Create a relation between them
+        crate::memory::relations::store_relation(&conn, &id_person, "works_at", &id_company)
+            .unwrap();
+
+        // Recall the person entity — should include relations
+        let response = recall_by_query(
+            &conn,
+            &embedding_a(),
+            "John Smith engineer",
+            &default_filter("default"),
+            &default_config(),
+        )
+        .unwrap();
+
+        // Find the person result
+        let person_result = response
+            .results
+            .iter()
+            .find(|r| r.id == id_person)
+            .expect("person entity should be in results");
+
+        assert_eq!(person_result.memory_type, "entity");
+        let relations = person_result.relations.as_ref().expect("entity should have relations");
+        assert_eq!(relations.len(), 1);
+        assert_eq!(relations[0].predicate, "works_at");
+        assert_eq!(relations[0].object.id, id_company);
+    }
+
+    #[test]
+    fn test_non_entity_search_no_relations() {
+        let mut conn = test_db();
+
+        let id = insert_test_memory(
+            &mut conn,
+            "Semantic knowledge about databases",
+            MemoryType::Semantic,
+            Scope::Global,
+            "default",
+            1.0,
+            &embedding_a(),
+        );
+
+        let response = recall_by_query(
+            &conn,
+            &embedding_a(),
+            "databases",
+            &default_filter("default"),
+            &default_config(),
+        )
+        .unwrap();
+
+        let result = response
+            .results
+            .iter()
+            .find(|r| r.id == id)
+            .expect("semantic memory should be in results");
+
+        assert!(result.relations.is_none());
     }
 }

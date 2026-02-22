@@ -316,22 +316,50 @@ impl LociTools {
     }
 
     /// Store a relationship between two entity memories.
-    #[tool(description = "Create a relationship between two entity memories (e.g. 'works_at', 'manages', 'part_of').")]
+    #[tool(description = "Create a relationship between two entity memories (e.g. 'works_at', 'manages', 'part_of'). Both IDs must refer to entity-type memories. Idempotent on (subject, predicate, object).")]
     async fn store_relation(
         &self,
         Parameters(params): Parameters<StoreRelationParams>,
     ) -> Result<String, String> {
+        if params.subject_id.is_empty() {
+            return Err("subject_id must not be empty".into());
+        }
+        if params.predicate.is_empty() {
+            return Err("predicate must not be empty".into());
+        }
+        if params.object_id.is_empty() {
+            return Err("object_id must not be empty".into());
+        }
+
         tracing::info!(
             subject = %params.subject_id,
             predicate = %params.predicate,
             object = %params.object_id,
-            "store_relation called (stub)"
+            "store_relation called"
         );
-        Ok(serde_json::json!({
-            "status": "not_implemented",
-            "message": "store_relation is a stub — implementation coming in M4"
+
+        let db = Arc::clone(&self.db);
+        let subject_id = params.subject_id;
+        let predicate = params.predicate;
+        let object_id = params.object_id;
+
+        let result = tokio::task::spawn_blocking(move || {
+            let conn = db
+                .lock()
+                .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+            crate::memory::relations::store_relation(&conn, &subject_id, &predicate, &object_id)
         })
-        .to_string())
+        .await
+        .map_err(|e| format!("task failed: {e}"))?
+        .map_err(|e| format!("store_relation failed: {e}"))?;
+
+        tracing::info!(
+            id = %result.id,
+            deduplicated = result.deduplicated,
+            "relation stored"
+        );
+
+        serde_json::to_string(&result).map_err(|e| format!("serialization failed: {e}"))
     }
 }
 

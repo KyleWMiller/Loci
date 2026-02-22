@@ -1,3 +1,4 @@
+pub mod relations;
 pub mod search;
 pub mod store;
 pub mod types;
