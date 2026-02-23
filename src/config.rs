@@ -177,13 +177,18 @@ impl LociConfig {
 
     /// Apply environment variable overrides (LOCI_DB, LOCI_GROUP, LOCI_LOG_LEVEL).
     fn apply_env_overrides(&mut self) {
-        if let Ok(val) = std::env::var("LOCI_DB") {
+        self.apply_env_overrides_with(|key| std::env::var(key));
+    }
+
+    /// Apply overrides using a custom env lookup function.
+    fn apply_env_overrides_with(&mut self, env: impl Fn(&str) -> Result<String, std::env::VarError>) {
+        if let Ok(val) = env("LOCI_DB") {
             self.storage.db_path = val;
         }
-        if let Ok(val) = std::env::var("LOCI_GROUP") {
+        if let Ok(val) = env("LOCI_GROUP") {
             self.storage.default_group = val;
         }
-        if let Ok(val) = std::env::var("LOCI_LOG_LEVEL") {
+        if let Ok(val) = env("LOCI_LOG_LEVEL") {
             self.server.log_level = val;
         }
     }
@@ -243,19 +248,17 @@ default_max_results = 10
     #[test]
     fn env_overrides_apply() {
         let mut config = LociConfig::default();
-        std::env::set_var("LOCI_DB", "/tmp/override.db");
-        std::env::set_var("LOCI_GROUP", "env-group");
-        std::env::set_var("LOCI_LOG_LEVEL", "trace");
+        let env = |key: &str| match key {
+            "LOCI_DB" => Ok("/tmp/override.db".into()),
+            "LOCI_GROUP" => Ok("env-group".into()),
+            "LOCI_LOG_LEVEL" => Ok("trace".into()),
+            _ => Err(std::env::VarError::NotPresent),
+        };
 
-        config.apply_env_overrides();
+        config.apply_env_overrides_with(env);
 
         assert_eq!(config.storage.db_path, "/tmp/override.db");
         assert_eq!(config.storage.default_group, "env-group");
         assert_eq!(config.server.log_level, "trace");
-
-        // Clean up
-        std::env::remove_var("LOCI_DB");
-        std::env::remove_var("LOCI_GROUP");
-        std::env::remove_var("LOCI_LOG_LEVEL");
     }
 }
