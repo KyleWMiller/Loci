@@ -39,7 +39,7 @@ Follow this sequence — each milestone builds on the previous:
 5. **M4 Entity Graph** ✅ — `store_relation` tool, `memory_inspect` with relation traversal, cascade on delete
 6. **M5 Management** ✅ — `memory_stats`, `forget_memory`, CLI commands (search, stats, inspect, export, import, reset)
 7. **M6 Maintenance** ✅ — confidence decay, compaction, episodic-to-semantic promotion, cleanup
-8. **M7 Resilience** — migrations, WAL mode, corrupt DB handling, SSE transport, integration tests
+8. **M7 Resilience** ✅ — schema migrations, corrupt DB handling, busy_timeout, model version tracking, SSE transport, `doctor`/`re-embed` CLI, comprehensive integration tests
 
 ## Critical Implementation Details
 

@@ -20,8 +20,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Start the MCP server (stdio transport)
-    Serve,
+    /// Start the MCP server (transport from config or --transport flag)
+    Serve {
+        /// Override transport: "stdio" or "sse"
+        #[arg(long)]
+        transport: Option<String>,
+    },
     /// Manage the embedding model
     Model {
         #[command(subcommand)]
@@ -60,6 +64,10 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Run database diagnostics and health check
+    Doctor,
+    /// Re-embed all memories with the currently configured model
+    ReEmbed,
 }
 
 #[derive(Subcommand)]
@@ -85,8 +93,15 @@ async fn main() -> Result<()> {
         .init();
 
     match cli.command {
-        Command::Serve => {
-            server::serve_stdio(config).await?;
+        Command::Serve { transport } => {
+            let transport = transport.as_deref().unwrap_or(&config.server.transport);
+            match transport {
+                "stdio" => server::serve_stdio(config).await?,
+                "sse" => server::serve_sse(config).await?,
+                other => anyhow::bail!(
+                    "unknown transport '{other}'. Supported: stdio, sse"
+                ),
+            }
         }
         Command::Model { action } => match action {
             ModelAction::Download => {
@@ -116,6 +131,12 @@ async fn main() -> Result<()> {
         }
         Command::Cleanup { dry_run } => {
             cli::maintenance::cleanup(&config, dry_run)?;
+        }
+        Command::Doctor => {
+            cli::doctor::doctor(&config)?;
+        }
+        Command::ReEmbed => {
+            cli::re_embed::re_embed(&config).await?;
         }
     }
 

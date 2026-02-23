@@ -1,7 +1,9 @@
+pub mod doctor;
 pub mod export;
 pub mod import;
 pub mod inspect;
 pub mod maintenance;
+pub mod re_embed;
 pub mod reset;
 pub mod search;
 pub mod stats;

@@ -57,6 +57,7 @@ Each type has different scoping, decay rates, and lifecycle behaviors — episod
 - **Progressive disclosure** — summary-first retrieval respects token budgets
 - **Entity graph** — lightweight triple store for relationships between entities
 - **Single file storage** — SQLite + FTS5 + sqlite-vec, all in `~/.loci/memory.db`
+- **Dual transport** — stdio for local clients, Streamable HTTP (SSE) for remote deployment
 - **MCP protocol** — works with Claude Code, Cowork, Agent SDK, and any MCP-compatible client
 
 ---
@@ -161,7 +162,7 @@ loci search "deployment workflow"
 ## CLI
 
 ```
-loci serve                        Start MCP server (stdio)
+loci serve [--transport stdio|sse] Start MCP server
 loci model download               Pre-download embedding model
 loci search <query>               Hybrid search from terminal
 loci stats [--group GROUP]        Memory statistics
@@ -170,6 +171,8 @@ loci export > backup.json         Export all memories (JSON)
 loci import backup.json           Import memories (re-embeds)
 loci compact                      Run maintenance (decay + compact + promote)
 loci cleanup [--dry-run]          Preview or delete stale memories
+loci doctor                       Database health check + diagnostics
+loci re-embed                     Re-embed all memories (after model change)
 loci reset                        Delete all memories
 ```
 
@@ -179,7 +182,7 @@ loci reset                        Delete all memories
 
 ```
 MCP Client (Claude Code, etc.)
-  ↕ stdio (JSON-RPC)
+  ↕ stdio or SSE (JSON-RPC)
 Loci MCP Server
   ├─ 6 MCP Tools
   ├─ Memory Engine

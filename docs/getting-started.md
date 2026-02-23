@@ -138,7 +138,7 @@ sequenceDiagram
 
 | Command | Description |
 |---------|-------------|
-| `loci serve` | Start MCP server (stdio transport) |
+| `loci serve [--transport]` | Start MCP server (stdio or sse) |
 | `loci model download` | Pre-download the embedding model |
 | `loci search <query>` | Search memories from terminal |
 | `loci stats [--group GROUP]` | Memory statistics |
@@ -147,6 +147,8 @@ sequenceDiagram
 | `loci import <file>` | Import memories from JSON |
 | `loci compact` | Run maintenance (decay + compact + promote) |
 | `loci cleanup [--dry-run]` | Preview or delete stale memories |
+| `loci doctor` | Database health check + diagnostics |
+| `loci re-embed` | Re-embed all memories (after model change) |
 | `loci reset` | Delete all memories (requires confirmation) |
 
 ---
@@ -157,8 +159,10 @@ Create `~/.loci/config.toml` (optional — all values have sensible defaults):
 
 ```toml
 [server]
-transport = "stdio"
+transport = "stdio"  # or "sse" for HTTP transport
 log_level = "info"
+host = "127.0.0.1"   # only used with sse transport
+port = 8080           # only used with sse transport
 
 [storage]
 db_path = "~/.loci/memory.db"
@@ -231,6 +235,48 @@ graph LR
 | `~/.loci/config.toml` | Configuration (optional) |
 | `~/.loci/memory.db` | SQLite database (all memories) |
 | `~/.loci/models/` | Cached ONNX model + tokenizer |
+
+## Remote Server (SSE)
+
+For remote deployment, Loci supports Streamable HTTP transport:
+
+```toml
+# ~/.loci/config.toml
+[server]
+transport = "sse"
+host = "0.0.0.0"
+port = 8080
+```
+
+Start the server:
+
+```bash
+loci serve
+# or override on the command line:
+loci serve --transport sse
+```
+
+The MCP endpoint will be available at `http://<host>:<port>/mcp`.
+
+---
+
+## Diagnostics
+
+Run `loci doctor` to check database health:
+
+```bash
+loci doctor
+```
+
+This reports schema version, database integrity, embedding model status, row counts, and sqlite-vec version. If the configured embedding model differs from the one used to create existing embeddings, run:
+
+```bash
+loci re-embed
+```
+
+This re-embeds all active memories with the currently configured model.
+
+---
 
 ## Backup and Restore
 

@@ -18,6 +18,8 @@ pub struct LociConfig {
 pub struct ServerConfig {
     pub transport: String,
     pub log_level: String,
+    pub host: String,
+    pub port: u16,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -77,6 +79,8 @@ impl Default for ServerConfig {
         Self {
             transport: "stdio".into(),
             log_level: "info".into(),
+            host: "127.0.0.1".into(),
+            port: 8080,
         }
     }
 }
