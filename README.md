@@ -72,7 +72,11 @@ loci model download
 
 ### 1. Connect to Claude Code
 
-Add to your `.mcp.json` (project or global `~/.claude/.mcp.json`):
+```bash
+claude mcp add loci -- loci serve
+```
+
+Or add manually to your `.mcp.json` (project or global `~/.claude/.mcp.json`):
 
 ```json
 {

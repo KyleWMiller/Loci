@@ -30,7 +30,11 @@ Downloads all-MiniLM-L6-v2 (~30MB ONNX model + tokenizer) to `~/.loci/models/`. 
 
 ## 3. Connect to Claude Code
 
-Add to your `.mcp.json` (project-level or global `~/.claude/.mcp.json`):
+```bash
+claude mcp add loci -- loci serve
+```
+
+Or add manually to your `.mcp.json` (project-level or global `~/.claude/.mcp.json`):
 
 ```json
 {
