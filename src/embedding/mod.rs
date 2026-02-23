@@ -10,6 +10,7 @@ pub const EMBEDDING_DIM: usize = 384;
 /// Implementations produce L2-normalized vectors of exactly [`EMBEDDING_DIM`] dimensions.
 /// All methods are synchronous — callers in async contexts should use
 /// `tokio::task::spawn_blocking`.
+#[allow(dead_code)]
 pub trait EmbeddingProvider: Send + Sync {
     /// Embed a single text string into a vector.
     fn embed(&self, text: &str) -> Result<Vec<f32>>;
