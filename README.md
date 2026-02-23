@@ -14,6 +14,13 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/crates/v/loci?style=flat-square&color=7c3aed" alt="crates.io" />
+  <img src="https://img.shields.io/crates/l/loci?style=flat-square&color=7c3aed" alt="license" />
+  <img src="https://img.shields.io/badge/rust-1.75+-7c3aed?style=flat-square&logo=rust&logoColor=white" alt="rust" />
+  <img src="https://img.shields.io/badge/MCP-compatible-7c3aed?style=flat-square" alt="MCP" />
+</p>
+
+<p align="center">
   <a href="#install">Install</a> · <a href="#quickstart">Quickstart</a> · <a href="docs/architecture.md">Architecture</a> · <a href="docs/cheatsheet.md">Cheatsheet</a> · <a href="docs/why.md">Why Loci?</a>
 </p>
 
