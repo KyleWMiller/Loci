@@ -1,3 +1,10 @@
+//! Memory lifecycle management — decay, compaction, promotion, and cleanup.
+//!
+//! - [`apply_decay`]: Reduce confidence scores over time (episodic decays faster)
+//! - [`compact_episodic`]: Group old episodic memories by week into summaries
+//! - [`promote_episodic_to_semantic`]: Cluster similar episodics into semantic knowledge
+//! - [`cleanup_stale`]: Remove low-confidence, long-unaccessed memories
+
 use anyhow::Result;
 use rusqlite::{params, Connection};
 use serde::Serialize;
@@ -9,39 +16,59 @@ use crate::embedding::EmbeddingProvider;
 
 // ── Result types ─────────────────────────────────────────────────────────────
 
+/// Result of a confidence decay pass.
 #[derive(Debug, Serialize)]
 pub struct DecayResult {
+    /// Number of memories affected, keyed by type (e.g. `"episodic"` → 12).
     pub affected_by_type: HashMap<String, usize>,
 }
 
+/// Result of episodic compaction.
 #[derive(Debug, Serialize)]
 pub struct CompactResult {
+    /// Number of (source_group, week) groups that met the size threshold.
     pub groups_compacted: usize,
+    /// Total number of individual episodic memories rolled up.
     pub memories_compacted: usize,
+    /// Number of new summary memories created.
     pub summaries_created: usize,
 }
 
+/// Result of episodic-to-semantic promotion.
 #[derive(Debug, Serialize)]
 pub struct PromoteResult {
+    /// Number of similarity clusters found above the threshold.
     pub clusters_found: usize,
+    /// Number of new semantic memories created from clusters.
     pub semantics_created: usize,
 }
 
+/// Result of stale memory cleanup.
 #[derive(Debug, Serialize)]
 pub struct CleanupResult {
+    /// Memories that matched the staleness criteria.
     pub candidates: Vec<CleanupCandidate>,
+    /// Number of memories actually deleted (0 in dry-run mode).
     pub deleted: usize,
+    /// `true` if this was a dry run (no deletions performed).
     pub dry_run: bool,
 }
 
+/// A memory identified as a candidate for cleanup.
 #[derive(Debug, Serialize)]
 pub struct CleanupCandidate {
+    /// Memory UUID.
     pub id: String,
+    /// Memory type.
     #[serde(rename = "type")]
     pub memory_type: String,
+    /// Current confidence score (below the cleanup floor).
     pub confidence: f64,
+    /// Truncated content preview (up to 80 chars).
     pub content_preview: String,
+    /// Last recall timestamp, or `None` if never accessed.
     pub last_accessed: Option<String>,
+    /// ISO 8601 creation timestamp.
     pub created_at: String,
 }
 

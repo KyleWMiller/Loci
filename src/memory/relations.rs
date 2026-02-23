@@ -1,3 +1,8 @@
+//! Entity relationship storage and deduplication.
+//!
+//! Stores directed (subject, predicate, object) triples between entity-type memories,
+//! with automatic deduplication on the full triple.
+
 use anyhow::{bail, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Serialize;
@@ -5,7 +10,9 @@ use serde::Serialize;
 /// Result returned from a store_relation operation.
 #[derive(Debug, Serialize)]
 pub struct StoreRelationResult {
+    /// UUID of the created (or existing) relation.
     pub id: String,
+    /// `true` if this exact (subject, predicate, object) triple already existed.
     pub deduplicated: bool,
 }
 

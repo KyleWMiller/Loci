@@ -1,3 +1,9 @@
+//! MCP tool handlers — bridges JSON-RPC tool calls to the memory engine.
+//!
+//! Each tool is defined in its own submodule with a parameter struct (deriving
+//! `JsonSchema` for MCP input validation). The [`LociTools`] struct holds shared
+//! state and exposes all tools via the `#[tool_router]` macro from `rmcp`.
+
 pub mod forget_memory;
 pub mod memory_inspect;
 pub mod memory_stats;

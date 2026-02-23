@@ -1,3 +1,9 @@
+//! SQL DDL for all Loci tables.
+//!
+//! Defines the `memories`, `memories_fts` (FTS5), `memories_vec` (vec0),
+//! `entity_relations`, `memory_log`, and `schema_meta` tables. All DDL uses
+//! `IF NOT EXISTS` for idempotent initialization.
+
 use rusqlite::Connection;
 
 /// All schema DDL statements for Loci's core tables.

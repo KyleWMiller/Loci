@@ -1,3 +1,8 @@
+//! Hybrid search engine — vector KNN + BM25 keyword, merged via Reciprocal Rank Fusion.
+//!
+//! The primary entry points are [`recall_by_query`] (hybrid search with post-filtering
+//! and token budgeting) and [`recall_by_ids`] (direct hydration for progressive disclosure).
+
 use anyhow::Result;
 use rusqlite::{params, Connection};
 use serde::Serialize;
@@ -10,15 +15,23 @@ use crate::memory::types::{MemoryType, Scope};
 /// A single search result with full content.
 #[derive(Debug, Clone, Serialize)]
 pub struct SearchResult {
+    /// Memory UUID.
     pub id: String,
+    /// Memory type (e.g. `"semantic"`, `"entity"`).
     #[serde(rename = "type")]
     pub memory_type: String,
+    /// Full text content.
     pub content: String,
+    /// Current confidence score.
     pub confidence: f64,
+    /// RRF-merged relevance score (higher is better).
     pub score: f64,
+    /// ISO 8601 creation timestamp.
     pub created_at: String,
+    /// Arbitrary JSON metadata, if present.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
+    /// Outbound entity relations (only populated for entity-type memories).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub relations: Option<Vec<RelationEntry>>,
 }
@@ -26,91 +39,133 @@ pub struct SearchResult {
 /// A compact summary result for progressive disclosure.
 #[derive(Debug, Clone, Serialize)]
 pub struct SummaryResult {
+    /// Memory UUID.
     pub id: String,
+    /// Memory type (e.g. `"semantic"`).
     #[serde(rename = "type")]
     pub memory_type: String,
+    /// Truncated content preview (up to 80 chars).
     pub preview: String,
+    /// RRF-merged relevance score.
     pub score: f64,
 }
 
 /// Response from recall_by_query or recall_by_ids.
 #[derive(Debug, Serialize)]
 pub struct RecallResponse {
+    /// Ranked search results (within token budget).
     pub results: Vec<SearchResult>,
+    /// Total matches before token-budget truncation.
     pub total_matched: usize,
+    /// Estimated token count of the returned results (`chars / 4`).
     pub token_estimate: usize,
 }
 
-/// Response with summary-only results.
+/// Response with summary-only results (for progressive disclosure).
 #[derive(Debug, Serialize)]
 pub struct RecallSummaryResponse {
+    /// Compact result summaries with truncated previews.
     pub results: Vec<SummaryResult>,
+    /// Total matches before truncation.
     pub total_matched: usize,
+    /// Estimated token count of the summary results.
     pub token_estimate: usize,
 }
 
 /// Filters applied after RRF merge.
 pub struct SearchFilter {
+    /// Restrict results to a single memory type, or `None` for all types.
     pub memory_type: Option<MemoryType>,
+    /// Restrict results to a single scope, or `None` for all scopes.
     pub scope: Option<Scope>,
+    /// The caller's group — group-scoped memories outside this group are excluded.
     pub group: String,
+    /// Minimum confidence score to include in results.
     pub min_confidence: f64,
 }
 
 /// Search configuration knobs.
 pub struct SearchConfig {
+    /// Maximum number of results to return.
     pub max_results: usize,
+    /// Approximate token budget; results stop being added once exceeded.
     pub token_budget: usize,
+    /// RRF constant `k` — controls rank-score decay (default 60).
     pub rrf_k: usize,
 }
 
 /// Full inspection response for a single memory.
 #[derive(Debug, Serialize)]
 pub struct InspectResponse {
+    /// Complete memory record.
     pub memory: InspectMemory,
+    /// Outbound entity relations, if requested and the memory is entity-type.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub relations: Option<Vec<RelationEntry>>,
+    /// Audit log entries, if requested.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log: Option<Vec<LogEntry>>,
 }
 
+/// Full details of a single inspected memory.
 #[derive(Debug, Serialize)]
 pub struct InspectMemory {
+    /// Memory UUID.
     pub id: String,
+    /// Memory type (e.g. `"semantic"`).
     #[serde(rename = "type")]
     pub memory_type: String,
+    /// Full text content.
     pub content: String,
+    /// Current confidence score.
     pub confidence: f64,
+    /// Number of times recalled.
     pub access_count: u32,
+    /// Last recall timestamp, or `None`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_accessed: Option<String>,
+    /// ISO 8601 creation timestamp.
     pub created_at: String,
+    /// ISO 8601 last-modification timestamp.
     pub updated_at: String,
+    /// ID of the replacement memory, or `"forgotten"`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub superseded_by: Option<String>,
+    /// Arbitrary JSON metadata, if present.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<serde_json::Value>,
 }
 
+/// An outbound relation from the inspected entity.
 #[derive(Debug, Clone, Serialize)]
 pub struct RelationEntry {
+    /// Relationship label (e.g. `"works_at"`).
     pub predicate: String,
+    /// The target entity at the other end of the relation.
     pub object: RelationTarget,
 }
 
+/// Compact representation of a related entity.
 #[derive(Debug, Clone, Serialize)]
 pub struct RelationTarget {
+    /// Target entity UUID.
     pub id: String,
+    /// Target entity's memory type (always `"entity"`).
     #[serde(rename = "type")]
     pub memory_type: String,
+    /// Truncated content preview.
     pub preview: String,
 }
 
+/// A single audit log entry.
 #[derive(Debug, Serialize)]
 pub struct LogEntry {
+    /// Operation name (e.g. `"create"`, `"delete"`, `"decay"`).
     pub operation: String,
+    /// Operation-specific details as JSON.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<serde_json::Value>,
+    /// ISO 8601 timestamp.
     pub created_at: String,
 }
 

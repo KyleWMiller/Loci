@@ -1,64 +1,105 @@
+//! Configuration loading and management.
+//!
+//! Loci reads configuration from `~/.loci/config.toml` (if present) with environment
+//! variable overrides (`LOCI_DB`, `LOCI_GROUP`, `LOCI_LOG_LEVEL`). All fields have
+//! sensible defaults — no configuration file is required.
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use tracing::info;
 
+/// Top-level Loci configuration, deserialized from `config.toml`.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 pub struct LociConfig {
+    /// MCP server transport and logging settings.
     pub server: ServerConfig,
+    /// Database path and default group.
     pub storage: StorageConfig,
+    /// Embedding model and cache directory.
     pub embedding: EmbeddingConfig,
+    /// Search parameters (max results, token budgets, RRF, dedup).
     pub retrieval: RetrievalConfig,
+    /// Lifecycle management (decay, compaction, promotion, cleanup).
     pub maintenance: MaintenanceConfig,
 }
 
+/// MCP server transport and logging settings.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 pub struct ServerConfig {
+    /// Transport type: `"stdio"` (default) or `"sse"`.
     pub transport: String,
+    /// Tracing log level (e.g. `"info"`, `"debug"`, `"trace"`).
     pub log_level: String,
+    /// Bind address for SSE transport (default `"127.0.0.1"`).
     pub host: String,
+    /// Port for SSE transport (default `8080`).
     pub port: u16,
 }
 
+/// Database path and default memory group.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 pub struct StorageConfig {
+    /// Path to the SQLite database file (supports `~` expansion).
     pub db_path: String,
+    /// Default `source_group` for new memories (default `"default"`).
     pub default_group: String,
 }
 
+/// Embedding model configuration.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 pub struct EmbeddingConfig {
+    /// Provider type: `"local"` for ONNX Runtime (only option currently).
     pub provider: String,
+    /// Model identifier (default `"all-MiniLM-L6-v2"`).
     pub model: String,
+    /// Directory to cache model files (supports `~` expansion).
     pub cache_dir: String,
 }
 
+/// Search and deduplication parameters.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 pub struct RetrievalConfig {
+    /// Maximum results returned by `recall_memory` (default 5).
     pub default_max_results: usize,
+    /// Token budget for preload/summary mode (default 2000).
     pub preload_token_budget: usize,
+    /// Token budget for full recall (default 4000).
     pub recall_token_budget: usize,
+    /// Reciprocal Rank Fusion constant `k` (default 60).
     pub rrf_k: usize,
+    /// Cosine similarity threshold for deduplication (default 0.92).
     pub dedup_threshold: f64,
 }
 
+/// Memory lifecycle management settings.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(default)]
 pub struct MaintenanceConfig {
+    /// Enable automatic maintenance on startup (default `false`).
     pub enabled: bool,
+    /// Days between automatic maintenance runs (default 7).
     pub interval_days: u64,
+    /// Per-cycle decay multiplier for episodic memories (default 0.95).
     pub episodic_decay_factor: f64,
+    /// Per-cycle decay multiplier for semantic/procedural/entity memories (default 0.99).
     pub semantic_decay_factor: f64,
+    /// Minimum age in days before episodic memories are eligible for compaction (default 30).
     pub compaction_age_days: u64,
+    /// Minimum group size for episodic compaction (default 5).
     pub compaction_min_group_size: usize,
+    /// Minimum cluster size for episodic-to-semantic promotion (default 3).
     pub promotion_threshold: usize,
+    /// Cosine similarity threshold for promotion clustering (default 0.88).
     pub promotion_similarity: f64,
+    /// Confidence below this floor makes a memory eligible for cleanup (default 0.05).
     pub cleanup_confidence_floor: f64,
+    /// Days without access before a low-confidence memory is cleaned up (default 90).
     pub cleanup_no_access_days: u64,
 }
 

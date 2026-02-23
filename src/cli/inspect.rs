@@ -1,3 +1,5 @@
+//! CLI `inspect` command — display full details for a single memory.
+
 use anyhow::Result;
 
 use crate::config::LociConfig;

@@ -1,3 +1,5 @@
+//! CLI `re-embed` command — regenerate all embeddings with the current model.
+
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::sync::Arc;

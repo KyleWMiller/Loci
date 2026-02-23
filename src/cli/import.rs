@@ -1,3 +1,5 @@
+//! CLI `import` command — restore memories from a JSON export file.
+
 use anyhow::{Context, Result};
 use rusqlite::params;
 use serde::Deserialize;

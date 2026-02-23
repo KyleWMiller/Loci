@@ -1,3 +1,5 @@
+//! CLI maintenance commands — `compact` and `cleanup` for memory lifecycle management.
+
 use anyhow::Result;
 
 use crate::config::LociConfig;

@@ -1,3 +1,9 @@
+//! Text-to-vector embedding pipeline.
+//!
+//! Provides the [`EmbeddingProvider`] trait and a local implementation using
+//! all-MiniLM-L6-v2 (384 dimensions, L2-normalized). The provider is created
+//! via [`create_provider`] from configuration.
+
 pub mod local;
 
 use anyhow::Result;

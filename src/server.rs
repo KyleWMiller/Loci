@@ -1,3 +1,8 @@
+//! MCP server initialization for stdio and SSE transports.
+//!
+//! Provides [`serve_stdio`] and [`serve_sse`] entry points that wire up the database,
+//! embedding provider, and MCP tool handler into a running server.
+
 use crate::config::LociConfig;
 use crate::db;
 use crate::embedding;

@@ -1,3 +1,8 @@
+//! Database initialization and health checking.
+//!
+//! Opens SQLite with WAL mode, loads the sqlite-vec extension for vector search,
+//! initializes the schema, runs forward-only migrations, and validates integrity.
+
 pub mod migrations;
 pub mod schema;
 
@@ -65,13 +70,21 @@ pub fn open_database(path: impl AsRef<Path>) -> Result<Connection> {
 
 /// Result of a full database health check.
 pub struct HealthReport {
+    /// Current schema version number.
     pub schema_version: u32,
+    /// Embedding model identifier stored in `schema_meta`, or `None` if unset.
     pub embedding_model: Option<String>,
+    /// `true` if `PRAGMA integrity_check` returned `"ok"`.
     pub integrity_ok: bool,
+    /// Raw output from `PRAGMA integrity_check`.
     pub integrity_details: String,
+    /// Version string from `vec_version()`.
     pub sqlite_vec_version: String,
+    /// Row count from the `memories` table.
     pub memory_count: i64,
+    /// Row count from the `entity_relations` table.
     pub relation_count: i64,
+    /// Row count from the `memory_log` audit table.
     pub log_count: i64,
 }
 

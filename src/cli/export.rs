@@ -1,3 +1,5 @@
+//! CLI `export` command — dump all memories and relations as JSON to stdout.
+
 use anyhow::Result;
 use rusqlite::params;
 use serde::Serialize;

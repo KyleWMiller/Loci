@@ -1,3 +1,5 @@
+//! CLI `search` command — interactive hybrid search from the terminal.
+
 use anyhow::Result;
 use std::sync::Arc;
 

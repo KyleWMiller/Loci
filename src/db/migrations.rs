@@ -1,3 +1,8 @@
+//! Forward-only schema migration framework.
+//!
+//! Tracks the schema version in `schema_meta` and runs sequential migrations
+//! to bring the database up to [`CURRENT_SCHEMA_VERSION`].
+
 use rusqlite::Connection;
 
 /// The schema version that the current binary expects.

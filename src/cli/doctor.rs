@@ -1,3 +1,5 @@
+//! CLI `doctor` command — run database diagnostics and print a health report.
+
 use anyhow::{Context, Result};
 
 use crate::config::LociConfig;

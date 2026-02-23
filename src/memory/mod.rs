@@ -1,3 +1,9 @@
+//! Core memory engine — storage, search, relations, and maintenance.
+//!
+//! This module contains the write path ([`store`]), read path ([`search`]),
+//! entity graph ([`relations`]), deletion ([`forget`]), statistics ([`stats`]),
+//! and lifecycle management ([`maintenance`]). Type definitions live in [`types`].
+
 pub mod forget;
 pub mod maintenance;
 pub mod relations;

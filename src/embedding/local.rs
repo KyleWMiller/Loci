@@ -1,3 +1,8 @@
+//! Local ONNX Runtime embedding provider.
+//!
+//! Implements [`EmbeddingProvider`] using the all-MiniLM-L6-v2
+//! model via `ort`. Handles tokenization, inference, mean pooling, and L2 normalization.
+
 use std::sync::Mutex;
 
 use anyhow::{Context, Result};

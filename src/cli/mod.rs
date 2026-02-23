@@ -1,3 +1,8 @@
+//! CLI commands and model management utilities.
+//!
+//! Provides terminal-facing commands for searching, inspecting, exporting, importing,
+//! and maintaining the memory database. Also handles ONNX model download.
+
 pub mod doctor;
 pub mod export;
 pub mod import;

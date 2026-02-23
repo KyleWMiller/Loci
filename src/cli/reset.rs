@@ -1,3 +1,5 @@
+//! CLI `reset` command — delete all memories after user confirmation.
+
 use anyhow::{bail, Result};
 use std::io::Write;
 

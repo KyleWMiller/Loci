@@ -1,3 +1,8 @@
+//! Memory store statistics and aggregation queries.
+//!
+//! Provides [`memory_stats`] which returns counts by type, scope, relation totals,
+//! database size, and timestamp ranges, with an optional group filter.
+
 use anyhow::Result;
 use rusqlite::{params, Connection};
 use serde::Serialize;
@@ -7,15 +12,24 @@ use std::path::Path;
 /// Response from memory_stats.
 #[derive(Debug, Serialize)]
 pub struct StatsResponse {
+    /// Total number of memory rows (active + superseded).
     pub total_memories: u64,
+    /// Memories that have not been superseded.
     pub active_memories: u64,
+    /// Memories that have been replaced or forgotten.
     pub superseded_memories: u64,
+    /// Count of active memories grouped by type (`"episodic"`, `"semantic"`, etc.).
     pub by_type: HashMap<String, u64>,
+    /// Count of active memories grouped by scope (`"global"`, `"group"`).
     pub by_scope: HashMap<String, u64>,
+    /// Total number of entity relation triples.
     pub entity_relations: u64,
+    /// Database file size in bytes.
     pub db_size_bytes: u64,
+    /// ISO 8601 timestamp of the oldest memory, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub oldest_memory: Option<String>,
+    /// ISO 8601 timestamp of the newest memory, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub newest_memory: Option<String>,
 }

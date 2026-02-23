@@ -1,3 +1,8 @@
+//! Soft and hard memory deletion.
+//!
+//! Soft delete marks a memory as superseded (by "forgotten"); hard delete permanently
+//! removes it from the memories table, FTS5 index, vector index, and cascades to relations.
+
 use anyhow::{bail, Result};
 use rusqlite::{params, Connection};
 use serde::Serialize;
@@ -7,7 +12,9 @@ use super::store::write_audit_log;
 /// Result returned from a forget operation.
 #[derive(Debug, Serialize)]
 pub struct ForgetResult {
+    /// ID of the forgotten memory.
     pub id: String,
+    /// `true` if the memory was permanently removed; `false` for soft delete.
     pub hard_deleted: bool,
 }
 

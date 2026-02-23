@@ -1,3 +1,9 @@
+//! Write path — embedding, deduplication, storage, and audit logging.
+//!
+//! [`store_memory`] is the single entry point. It runs the full pipeline inside a
+//! transaction: dedup check via vector similarity, insert into the memories table, sync
+//! FTS5 index, insert embedding vector, handle supersession, and write an audit log.
+
 use anyhow::{bail, Result};
 use rusqlite::{params, Connection, Transaction};
 use serde::Serialize;
@@ -7,10 +13,14 @@ use crate::memory::types::{MemoryType, Scope};
 /// Result returned from a store operation.
 #[derive(Debug, Serialize)]
 pub struct StoreMemoryResult {
+    /// UUID of the stored (or deduplicated) memory.
     pub id: String,
+    /// Memory type as a string (e.g. `"semantic"`).
     #[serde(rename = "type")]
     pub memory_type: String,
+    /// `true` if an existing near-duplicate was updated instead of creating a new record.
     pub deduplicated: bool,
+    /// ID of the memory that was superseded by this one, if any.
     pub superseded: Option<String>,
 }
 

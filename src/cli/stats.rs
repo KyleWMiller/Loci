@@ -1,3 +1,5 @@
+//! CLI `stats` command — display memory store statistics.
+
 use anyhow::Result;
 
 use crate::config::LociConfig;
