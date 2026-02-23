@@ -108,7 +108,7 @@ fn check_dedup(
     threshold: f64,
 ) -> Result<Option<String>> {
     let embedding_bytes = embedding_to_bytes(embedding);
-    let max_distance = 1.0 - threshold; // cosine distance = 1 - cosine similarity
+    let max_distance = super::cosine_threshold_to_l2(threshold);
 
     let mut stmt = conn.prepare(
         "SELECT id, distance FROM memories_vec WHERE embedding MATCH ?1 ORDER BY distance LIMIT 20",

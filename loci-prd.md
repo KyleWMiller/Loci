@@ -703,7 +703,7 @@ loci/
 
 ## Feature Milestones
 
-### M0: Foundation
+### M0: Foundation ✅
 
 Establish the core infrastructure. After this milestone, the binary compiles, the database initializes, and the MCP server starts and responds to tool calls with stub responses.
 
@@ -713,7 +713,7 @@ Establish the core infrastructure. After this milestone, the binary compiles, th
 - MCP server with stdio transport, tool registration (stubs)
 - `loci serve` and `loci model download` commands
 
-### M1: Embedding Engine
+### M1: Embedding Engine ✅
 
 Local embedding pipeline operational. After this milestone, text can be converted to 384-dim vectors without any network calls.
 
@@ -723,7 +723,7 @@ Local embedding pipeline operational. After this milestone, text can be converte
 - `embed(text) -> Vec<f32>` function with batch support
 - Unit tests for embedding consistency and dimension validation
 
-### M2: Write Path
+### M2: Write Path ✅
 
 Memories can be stored. After this milestone, `store_memory` is fully functional including deduplication.
 
@@ -734,7 +734,7 @@ Memories can be stored. After this milestone, `store_memory` is fully functional
 - Audit log writes on every mutation
 - Scope defaulting by memory type
 
-### M3: Read Path
+### M3: Read Path ✅
 
 Memories can be retrieved. After this milestone, `recall_memory` delivers hybrid search results with progressive disclosure.
 
@@ -748,7 +748,7 @@ Memories can be retrieved. After this milestone, `recall_memory` delivers hybrid
 - ID-based hydration for progressive disclosure step 2
 - Access tracking: bump `access_count` and `last_accessed` on retrieval
 
-### M4: Entity Graph
+### M4: Entity Graph ✅
 
 Entity relationships can be stored and queried. After this milestone, the lightweight knowledge graph is functional.
 
@@ -758,7 +758,7 @@ Entity relationships can be stored and queried. After this milestone, the lightw
 - Cascade behavior: relations cleaned up when entities are forgotten
 - Entity-aware search: when recalling an entity, include its direct relations in results
 
-### M5: Management Tools
+### M5: Management Tools ✅
 
 Introspection and management via MCP tools and CLI. After this milestone, users can understand and manage their memory store.
 
@@ -767,7 +767,7 @@ Introspection and management via MCP tools and CLI. After this milestone, users 
 - CLI commands: `search`, `stats`, `inspect`, `export`, `import`, `reset`
 - JSON export/import format for backup and migration
 
-### M6: Maintenance Engine
+### M6: Maintenance Engine ✅
 
 Automated memory lifecycle management. After this milestone, the memory store self-maintains over time.
 
@@ -852,14 +852,18 @@ brew install loci
 
 ---
 
+## Resolved Questions
+
+1. **Rust MCP SDK maturity:** Chose `rmcp` 0.16. Uses `#[tool_router]` / `#[tool]` / `#[tool_handler]` macros with `schemars` for JSON Schema generation. Works well for stdio transport.
+
+2. **sqlite-vec in Rust:** Loads via `sqlite3_auto_extension(transmute(sqlite3_vec_init))` with `std::sync::Once` guard. Works reliably across platforms without bundling separate C extensions.
+
+3. **Embedding model distribution:** Lazy download via `loci model download`. Downloads from HuggingFace on first use, cached to `~/.loci/models/`. Network only required once.
+
+4. **Conflict resolution:** Agent-controlled via supersession. The CLAUDE.md template instructs agents to `recall_memory` for existing facts, then `store_memory` with `supersedes` to replace outdated ones. No automatic conflict detection — the agent reasons about when facts change.
+
 ## Open Questions
 
-1. **Rust MCP SDK maturity:** Evaluate `mcp-rust-sdk` vs `rmcp` vs raw protocol implementation at M0. The MCP stdio protocol is simple enough that a minimal custom implementation may be more maintainable than depending on an immature crate.
+1. **Compaction without LLM:** Current M6 compaction uses concatenation + truncation (no summarization). Two future options remain open: (a) expose a `compact_memories` MCP tool so the agent provides the summary, or (b) add an optional LLM API call during `loci compact`. Deferred until real-world usage reveals whether concatenation quality is sufficient.
 
-2. **Compaction without LLM:** M6 compaction ideally uses an LLM to summarize grouped episodic memories. Without an LLM available, fallback to concatenation with truncation. Consider whether the agent itself should be prompted to compact (via a `compact_memories` tool) rather than the server doing it autonomously.
-
-3. **sqlite-vec in Rust:** The `sqlite-vec` npm package has Node.js bindings. For Rust, load the C extension via `rusqlite::Connection::load_extension`. Verify the extension binary ships correctly across platforms or bundle it.
-
-4. **Embedding model distribution:** The MiniLM ONNX model (~30MB) needs to be downloaded on first use. Consider bundling it in the binary (increases binary size to ~45MB) vs. lazy download. Lazy download is more flexible but requires network on first run.
-
-5. **Group identity in non-Claude-Code contexts:** Claude Code can pass `${workspaceFolder}` as the group. For Cowork, Agent SDK, or other clients, the group needs to be set explicitly. Define conventions for group naming to avoid fragmentation.
+2. **Group identity in non-Claude-Code contexts:** Claude Code can pass `${workspaceFolder}` as the group. For Cowork, Agent SDK, or other clients, the group needs to be set explicitly. Define conventions for group naming to avoid fragmentation.

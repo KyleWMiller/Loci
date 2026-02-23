@@ -23,4 +23,13 @@ rrf_k = 60                               # Reciprocal Rank Fusion k parameter
 dedup_threshold = 0.92                    # Cosine similarity threshold for deduplication
 
 [maintenance]
-enabled = false                           # Enable automatic maintenance (decay, compaction)
+enabled = false                           # Enable automatic maintenance (future M7)
+interval_days = 7                         # Days between maintenance cycles
+episodic_decay_factor = 0.95              # Confidence multiplier per cycle (episodic)
+semantic_decay_factor = 0.99              # Confidence multiplier per cycle (semantic/procedural/entity)
+compaction_age_days = 30                  # Episodic memories older than this are compaction candidates
+compaction_min_group_size = 5             # Minimum memories in a week+group to trigger compaction
+promotion_threshold = 3                   # Similar episodics needed to promote to semantic
+promotion_similarity = 0.88              # Cosine similarity threshold for promotion clustering
+cleanup_confidence_floor = 0.05           # Memories below this confidence are cleanup candidates
+cleanup_no_access_days = 90               # Days without access before cleanup eligibility

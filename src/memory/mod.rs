@@ -1,4 +1,5 @@
 pub mod forget;
+pub mod maintenance;
 pub mod relations;
 pub mod search;
 pub mod stats;
@@ -13,4 +14,12 @@ pub fn embedding_to_bytes(embedding: &[f32]) -> &[u8] {
             embedding.len() * std::mem::size_of::<f32>(),
         )
     }
+}
+
+/// Convert a cosine similarity threshold to L2 distance threshold.
+///
+/// sqlite-vec defaults to L2 distance. For L2-normalized vectors:
+///   L2_dist = sqrt(2 * (1 - cosine_similarity))
+pub fn cosine_threshold_to_l2(cosine_threshold: f64) -> f64 {
+    (2.0 * (1.0 - cosine_threshold)).sqrt()
 }

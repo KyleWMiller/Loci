@@ -52,6 +52,14 @@ enum Command {
     },
     /// Delete all memories (requires confirmation)
     Reset,
+    /// Run maintenance compaction (decay + compact + promote)
+    Compact,
+    /// Clean up stale low-confidence memories
+    Cleanup {
+        /// Preview what would be deleted without actually deleting
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -102,6 +110,12 @@ async fn main() -> Result<()> {
         }
         Command::Reset => {
             cli::reset::reset(&config)?;
+        }
+        Command::Compact => {
+            cli::maintenance::compact(&config).await?;
+        }
+        Command::Cleanup { dry_run } => {
+            cli::maintenance::cleanup(&config, dry_run)?;
         }
     }
 

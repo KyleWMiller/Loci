@@ -49,6 +49,15 @@ pub struct RetrievalConfig {
 #[serde(default)]
 pub struct MaintenanceConfig {
     pub enabled: bool,
+    pub interval_days: u64,
+    pub episodic_decay_factor: f64,
+    pub semantic_decay_factor: f64,
+    pub compaction_age_days: u64,
+    pub compaction_min_group_size: usize,
+    pub promotion_threshold: usize,
+    pub promotion_similarity: f64,
+    pub cleanup_confidence_floor: f64,
+    pub cleanup_no_access_days: u64,
 }
 
 impl Default for LociConfig {
@@ -113,7 +122,18 @@ impl Default for RetrievalConfig {
 
 impl Default for MaintenanceConfig {
     fn default() -> Self {
-        Self { enabled: false }
+        Self {
+            enabled: false,
+            interval_days: 7,
+            episodic_decay_factor: 0.95,
+            semantic_decay_factor: 0.99,
+            compaction_age_days: 30,
+            compaction_min_group_size: 5,
+            promotion_threshold: 3,
+            promotion_similarity: 0.88,
+            cleanup_confidence_floor: 0.05,
+            cleanup_no_access_days: 90,
+        }
     }
 }
 

@@ -32,13 +32,13 @@ Loci MCP Server
 
 Follow this sequence — each milestone builds on the previous:
 
-1. **M0 Foundation** — Cargo scaffold, clap CLI, config loading, SQLite schema init, sqlite-vec extension loading, MCP server with stub tools
-2. **M1 Embedding Engine** — `ort` integration, model download/caching, `embed(text) -> Vec<f32>` 
-3. **M2 Write Path** — `store_memory` tool: UUID v7, embedding, SQLite insert, FTS5 sync, vec0 insert, dedup gate (cosine > 0.92), supersession, audit log
-4. **M3 Read Path** — `recall_memory` tool: vector KNN, BM25 FTS, RRF merge, post-filters, token budgeting, summary_only mode, ID hydration, access tracking
-5. **M4 Entity Graph** — `store_relation` tool, `memory_inspect` with relation traversal, cascade on delete
-6. **M5 Management** — `memory_stats`, `forget_memory`, CLI commands (search, stats, inspect, export, import, reset)
-7. **M6 Maintenance** — confidence decay, compaction, episodic-to-semantic promotion, cleanup
+1. **M0 Foundation** ✅ — Cargo scaffold, clap CLI, config loading, SQLite schema init, sqlite-vec extension loading, MCP server with stub tools
+2. **M1 Embedding Engine** ✅ — `ort` integration, model download/caching, `embed(text) -> Vec<f32>`
+3. **M2 Write Path** ✅ — `store_memory` tool: UUID v7, embedding, SQLite insert, FTS5 sync, vec0 insert, dedup gate (cosine > 0.92), supersession, audit log
+4. **M3 Read Path** ✅ — `recall_memory` tool: vector KNN, BM25 FTS, RRF merge, post-filters, token budgeting, summary_only mode, ID hydration, access tracking
+5. **M4 Entity Graph** ✅ — `store_relation` tool, `memory_inspect` with relation traversal, cascade on delete
+6. **M5 Management** ✅ — `memory_stats`, `forget_memory`, CLI commands (search, stats, inspect, export, import, reset)
+7. **M6 Maintenance** ✅ — confidence decay, compaction, episodic-to-semantic promotion, cleanup
 8. **M7 Resilience** — migrations, WAL mode, corrupt DB handling, SSE transport, integration tests
 
 ## Critical Implementation Details
@@ -134,6 +134,16 @@ loci/
 - Write integration tests that create temp databases — never test against `~/.loci/`
 - Keep modules focused — one file per MCP tool handler
 - SQL queries as `const &str` in the module that uses them, not a separate queries file
+
+## Versioning
+
+Loci follows semver. The version in `Cargo.toml` must be bumped as part of any change.
+
+**Pre-1.0 rules** (current: 0.x.y):
+- **0.MINOR bump** (e.g., 0.1.0 → 0.2.0): Breaking changes — MCP tool schema changes (renamed/removed params, changed response shape), DB schema changes requiring migration, config format changes, CLI arg changes
+- **0.x.PATCH bump** (e.g., 0.1.0 → 0.1.1): Non-breaking changes — bug fixes, new features with additive-only API changes, internal refactors, new CLI commands, performance improvements, documentation
+
+When making a change, bump the version in `Cargo.toml` and note the classification in the commit message (e.g., `[patch]` or `[minor]`).
 
 ## M0 Priority: sqlite-vec Spike
 
