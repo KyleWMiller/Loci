@@ -74,6 +74,8 @@ enum Command {
 enum ModelAction {
     /// Download the embedding model to ~/.loci/models/
     Download,
+    /// Check embedding model download and configuration status
+    Status,
 }
 
 #[tokio::main]
@@ -106,6 +108,9 @@ async fn main() -> Result<()> {
         Command::Model { action } => match action {
             ModelAction::Download => {
                 cli::model_download(&config.embedding).await?;
+            }
+            ModelAction::Status => {
+                cli::model_status::model_status(&config)?;
             }
         },
         Command::Search { query } => {

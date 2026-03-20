@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/crates/v/loci?style=flat-square&color=7c3aed" alt="crates.io" />
-  <img src="https://img.shields.io/crates/l/loci?style=flat-square&color=7c3aed" alt="license" />
+  <img src="https://img.shields.io/crates/v/loci-mcp?style=flat-square&color=7c3aed" alt="crates.io" />
+  <img src="https://img.shields.io/crates/l/loci-mcp?style=flat-square&color=7c3aed" alt="license" />
   <img src="https://img.shields.io/badge/rust-1.75+-7c3aed?style=flat-square&logo=rust&logoColor=white" alt="rust" />
   <img src="https://img.shields.io/badge/MCP-compatible-7c3aed?style=flat-square" alt="MCP" />
 </p>
@@ -63,6 +63,12 @@ Each type has different scoping, decay rates, and lifecycle behaviors — episod
 ---
 
 ## Install
+
+```bash
+cargo install loci-mcp
+```
+
+Or from source:
 
 ```bash
 cargo install --path .
@@ -164,6 +170,7 @@ loci search "deployment workflow"
 ```
 loci serve [--transport stdio|sse] Start MCP server
 loci model download               Pre-download embedding model
+loci model status                 Check model download & config status
 loci search <query>               Hybrid search from terminal
 loci stats [--group GROUP]        Memory statistics
 loci inspect <id>                 Full memory details

@@ -1,6 +1,6 @@
 [package]
-name = "loci"
-version = "0.2.0"
+name = "loci-mcp"
+version = "0.2.1"
 edition = "2024"
 description = "Cognitive memory MCP server — persistent, structured, cross-session memory for AI agents"
 license = "MIT"
@@ -10,6 +10,14 @@ readme = "README.md"
 keywords = ["mcp", "memory", "ai", "agent", "sqlite"]
 categories = ["command-line-utilities", "database"]
 exclude = ["assets/*", "docs/*", "tasks/*"]
+
+[[bin]]
+name = "loci"
+path = "src/main.rs"
+
+[lib]
+name = "loci"
+path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1"
