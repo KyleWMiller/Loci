@@ -407,16 +407,14 @@ impl LociTools {
 #[tool_handler]
 impl ServerHandler for LociTools {
     fn get_info(&self) -> rmcp::model::ServerInfo {
-        rmcp::model::ServerInfo {
-            instructions: Some(
-                "Loci is a cognitive memory server. Use store_memory to save memories, \
-                 recall_memory to search, and memory_inspect to view details."
-                    .into(),
-            ),
-            capabilities: rmcp::model::ServerCapabilities::builder()
+        rmcp::model::ServerInfo::new(
+            rmcp::model::ServerCapabilities::builder()
                 .enable_tools()
                 .build(),
-            ..Default::default()
-        }
+        )
+        .with_instructions(
+            "Loci is a cognitive memory server. Use store_memory to save memories, \
+             recall_memory to search, and memory_inspect to view details.",
+        )
     }
 }
