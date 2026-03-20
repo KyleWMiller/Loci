@@ -1,0 +1,557 @@
+  Installing loci v0.2.0 (/Users/raczj/src/Loci)
+    Updating crates.io index
+     Locking 382 packages to latest Rust 1.94.0 compatible versions
+      Adding matchit v0.8.4 (available: v0.8.6)
+      Adding rmcp v0.16.0 (available: v1.2.0)
+      Adding rusqlite v0.38.0 (available: v0.39.0)
+   Compiling loci v0.2.0 (/Users/raczj/src/Loci)
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtSessionOptions>: Sync` is not satisfied
+   --> src/embedding/local.rs:48:92
+    |
+ 48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+    |              ------------------------------------------------------------------------------^ `NonNull<OrtSessionOptions>` cannot be shared between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `builder::SessionOptionsPointer`, the trait `Sync` is not implemented for `NonNull<OrtSessionOptions>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `builder::SessionOptionsPointer`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:251:19
+    |
+251 | pub(crate) struct SessionOptionsPointer(NonNull<ort_sys::OrtSessionOptions>);
+    |                   ^^^^^^^^^^^^^^^^^^^^^
+    = note: required for `Arc<builder::SessionOptionsPointer>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtSessionOptions>: Send` is not satisfied
+   --> src/embedding/local.rs:48:92
+    |
+ 48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+    |              ------------------------------------------------------------------------------^ `NonNull<OrtSessionOptions>` cannot be sent between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `builder::SessionOptionsPointer`, the trait `Send` is not implemented for `NonNull<OrtSessionOptions>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `builder::SessionOptionsPointer`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:251:19
+    |
+251 | pub(crate) struct SessionOptionsPointer(NonNull<ort_sys::OrtSessionOptions>);
+    |                   ^^^^^^^^^^^^^^^^^^^^^
+    = note: required for `Arc<builder::SessionOptionsPointer>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `(dyn std::any::Any + 'static): Sync` is not satisfied
+  --> src/embedding/local.rs:48:92
+   |
+48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+   |              ------------------------------------------------------------------------------^ `(dyn std::any::Any + 'static)` cannot be shared between threads safely
+   |              |
+   |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+   |
+   = help: the trait `Sync` is not implemented for `(dyn std::any::Any + 'static)`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = note: required for `Arc<(dyn std::any::Any + 'static)>` to implement `Send`
+note: required because it appears within the type `std::option::Option<Arc<(dyn std::any::Any + 'static)>>`
+  --> library/core/src/option.rs:600:9
+note: required because it appears within the type `SessionBuilder`
+  --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+   |
+71 | pub struct SessionBuilder {
+   |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+  --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+   |
+75 | pub struct Error<R = ()> {
+   |            ^^^^^
+   = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `(dyn std::any::Any + 'static): Send` is not satisfied
+  --> src/embedding/local.rs:48:92
+   |
+48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+   |              ------------------------------------------------------------------------------^ `(dyn std::any::Any + 'static)` cannot be sent between threads safely
+   |              |
+   |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+   |
+   = help: the trait `Send` is not implemented for `(dyn std::any::Any + 'static)`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = note: required for `Arc<(dyn std::any::Any + 'static)>` to implement `Send`
+note: required because it appears within the type `std::option::Option<Arc<(dyn std::any::Any + 'static)>>`
+  --> library/core/src/option.rs:600:9
+note: required because it appears within the type `SessionBuilder`
+  --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+   |
+71 | pub struct SessionBuilder {
+   |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+  --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+   |
+75 | pub struct Error<R = ()> {
+   |            ^^^^^
+   = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtMemoryInfo>: Sync` is not satisfied
+   --> src/embedding/local.rs:48:92
+    |
+ 48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+    |              ------------------------------------------------------------------------------^ `NonNull<OrtMemoryInfo>` cannot be shared between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `MemoryInfo`, the trait `Sync` is not implemented for `NonNull<OrtMemoryInfo>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `MemoryInfo`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/memory.rs:376:12
+    |
+376 | pub struct MemoryInfo {
+    |            ^^^^^^^^^^
+    = note: required for `Arc<MemoryInfo>` to implement `Send`
+note: required because it appears within the type `std::option::Option<Arc<MemoryInfo>>`
+   --> library/core/src/option.rs:600:9
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtMemoryInfo>: Send` is not satisfied
+   --> src/embedding/local.rs:48:92
+    |
+ 48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+    |              ------------------------------------------------------------------------------^ `NonNull<OrtMemoryInfo>` cannot be sent between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `MemoryInfo`, the trait `Send` is not implemented for `NonNull<OrtMemoryInfo>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `MemoryInfo`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/memory.rs:376:12
+    |
+376 | pub struct MemoryInfo {
+    |            ^^^^^^^^^^
+    = note: required for `Arc<MemoryInfo>` to implement `Send`
+note: required because it appears within the type `std::option::Option<Arc<MemoryInfo>>`
+   --> library/core/src/option.rs:600:9
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtCustomOpDomain>: Sync` is not satisfied
+   --> src/embedding/local.rs:48:92
+    |
+ 48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+    |              ------------------------------------------------------------------------------^ `NonNull<OrtCustomOpDomain>` cannot be shared between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `OperatorDomain`, the trait `Sync` is not implemented for `NonNull<OrtCustomOpDomain>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `OperatorDomain`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/operator/mod.rs:122:12
+    |
+122 | pub struct OperatorDomain {
+    |            ^^^^^^^^^^^^^^
+    = note: required for `Arc<OperatorDomain>` to implement `Send`
+    = note: 1 redundant requirement hidden
+    = note: required for `smallvec::SmallVec<[Arc<OperatorDomain>; 1]>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtCustomOpDomain>: Send` is not satisfied
+   --> src/embedding/local.rs:48:92
+    |
+ 48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+    |              ------------------------------------------------------------------------------^ `NonNull<OrtCustomOpDomain>` cannot be sent between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `OperatorDomain`, the trait `Send` is not implemented for `NonNull<OrtCustomOpDomain>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `OperatorDomain`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/operator/mod.rs:122:12
+    |
+122 | pub struct OperatorDomain {
+    |            ^^^^^^^^^^^^^^
+    = note: required for `Arc<OperatorDomain>` to implement `Send`
+    = note: 1 redundant requirement hidden
+    = note: required for `smallvec::SmallVec<[Arc<OperatorDomain>; 1]>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `(dyn Operator + 'static): Sync` is not satisfied
+   --> src/embedding/local.rs:48:92
+    |
+ 48 |             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)?
+    |              ------------------------------------------------------------------------------^ `(dyn Operator + 'static)` cannot be shared between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: the trait `Sync` is not implemented for `(dyn Operator + 'static)`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = note: required for `Unique<(dyn Operator + 'static)>` to implement `Sync`
+note: required because it appears within the type `Box<(dyn Operator + 'static)>`
+   --> library/alloc/src/boxed.rs:234:11
+note: required because it appears within the type `operator::bound::BoundOperator`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/operator/bound.rs:12:19
+    |
+ 12 | pub(crate) struct BoundOperator {
+    |                   ^^^^^^^^^^^^^
+    = note: required for `Unique<operator::bound::BoundOperator>` to implement `Sync`
+note: required because it appears within the type `Box<operator::bound::BoundOperator>`
+   --> library/alloc/src/boxed.rs:234:11
+note: required because it appears within the type `PhantomData<Box<operator::bound::BoundOperator>>`
+   --> library/core/src/marker.rs:819:11
+note: required because it appears within the type `ort::__private::alloc::raw_vec::RawVec<Box<operator::bound::BoundOperator>>`
+   --> library/alloc/src/raw_vec/mod.rs:73:18
+note: required because it appears within the type `Vec<Box<operator::bound::BoundOperator>>`
+   --> library/alloc/src/vec/mod.rs:440:11
+note: required because it appears within the type `OperatorDomain`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/operator/mod.rs:122:12
+    |
+122 | pub struct OperatorDomain {
+    |            ^^^^^^^^^^^^^^
+    = note: required for `Arc<OperatorDomain>` to implement `Send`
+    = note: 1 redundant requirement hidden
+    = note: required for `smallvec::SmallVec<[Arc<OperatorDomain>; 1]>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtSessionOptions>: Sync` is not satisfied
+   --> src/embedding/local.rs:49:35
+    |
+ 49 |             .with_intra_threads(4)?
+    |              ---------------------^ `NonNull<OrtSessionOptions>` cannot be shared between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `builder::SessionOptionsPointer`, the trait `Sync` is not implemented for `NonNull<OrtSessionOptions>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `builder::SessionOptionsPointer`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:251:19
+    |
+251 | pub(crate) struct SessionOptionsPointer(NonNull<ort_sys::OrtSessionOptions>);
+    |                   ^^^^^^^^^^^^^^^^^^^^^
+    = note: required for `Arc<builder::SessionOptionsPointer>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtSessionOptions>: Send` is not satisfied
+   --> src/embedding/local.rs:49:35
+    |
+ 49 |             .with_intra_threads(4)?
+    |              ---------------------^ `NonNull<OrtSessionOptions>` cannot be sent between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `builder::SessionOptionsPointer`, the trait `Send` is not implemented for `NonNull<OrtSessionOptions>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `builder::SessionOptionsPointer`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:251:19
+    |
+251 | pub(crate) struct SessionOptionsPointer(NonNull<ort_sys::OrtSessionOptions>);
+    |                   ^^^^^^^^^^^^^^^^^^^^^
+    = note: required for `Arc<builder::SessionOptionsPointer>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `(dyn std::any::Any + 'static): Sync` is not satisfied
+  --> src/embedding/local.rs:49:35
+   |
+49 |             .with_intra_threads(4)?
+   |              ---------------------^ `(dyn std::any::Any + 'static)` cannot be shared between threads safely
+   |              |
+   |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+   |
+   = help: the trait `Sync` is not implemented for `(dyn std::any::Any + 'static)`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = note: required for `Arc<(dyn std::any::Any + 'static)>` to implement `Send`
+note: required because it appears within the type `std::option::Option<Arc<(dyn std::any::Any + 'static)>>`
+  --> library/core/src/option.rs:600:9
+note: required because it appears within the type `SessionBuilder`
+  --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+   |
+71 | pub struct SessionBuilder {
+   |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+  --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+   |
+75 | pub struct Error<R = ()> {
+   |            ^^^^^
+   = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `(dyn std::any::Any + 'static): Send` is not satisfied
+  --> src/embedding/local.rs:49:35
+   |
+49 |             .with_intra_threads(4)?
+   |              ---------------------^ `(dyn std::any::Any + 'static)` cannot be sent between threads safely
+   |              |
+   |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+   |
+   = help: the trait `Send` is not implemented for `(dyn std::any::Any + 'static)`
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = note: required for `Arc<(dyn std::any::Any + 'static)>` to implement `Send`
+note: required because it appears within the type `std::option::Option<Arc<(dyn std::any::Any + 'static)>>`
+  --> library/core/src/option.rs:600:9
+note: required because it appears within the type `SessionBuilder`
+  --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+   |
+71 | pub struct SessionBuilder {
+   |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+  --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+   |
+75 | pub struct Error<R = ()> {
+   |            ^^^^^
+   = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtMemoryInfo>: Sync` is not satisfied
+   --> src/embedding/local.rs:49:35
+    |
+ 49 |             .with_intra_threads(4)?
+    |              ---------------------^ `NonNull<OrtMemoryInfo>` cannot be shared between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `MemoryInfo`, the trait `Sync` is not implemented for `NonNull<OrtMemoryInfo>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `MemoryInfo`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/memory.rs:376:12
+    |
+376 | pub struct MemoryInfo {
+    |            ^^^^^^^^^^
+    = note: required for `Arc<MemoryInfo>` to implement `Send`
+note: required because it appears within the type `std::option::Option<Arc<MemoryInfo>>`
+   --> library/core/src/option.rs:600:9
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtMemoryInfo>: Send` is not satisfied
+   --> src/embedding/local.rs:49:35
+    |
+ 49 |             .with_intra_threads(4)?
+    |              ---------------------^ `NonNull<OrtMemoryInfo>` cannot be sent between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `MemoryInfo`, the trait `Send` is not implemented for `NonNull<OrtMemoryInfo>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `MemoryInfo`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/memory.rs:376:12
+    |
+376 | pub struct MemoryInfo {
+    |            ^^^^^^^^^^
+    = note: required for `Arc<MemoryInfo>` to implement `Send`
+note: required because it appears within the type `std::option::Option<Arc<MemoryInfo>>`
+   --> library/core/src/option.rs:600:9
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtCustomOpDomain>: Sync` is not satisfied
+   --> src/embedding/local.rs:49:35
+    |
+ 49 |             .with_intra_threads(4)?
+    |              ---------------------^ `NonNull<OrtCustomOpDomain>` cannot be shared between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `OperatorDomain`, the trait `Sync` is not implemented for `NonNull<OrtCustomOpDomain>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `OperatorDomain`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/operator/mod.rs:122:12
+    |
+122 | pub struct OperatorDomain {
+    |            ^^^^^^^^^^^^^^
+    = note: required for `Arc<OperatorDomain>` to implement `Send`
+    = note: 1 redundant requirement hidden
+    = note: required for `smallvec::SmallVec<[Arc<OperatorDomain>; 1]>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `NonNull<OrtCustomOpDomain>: Send` is not satisfied
+   --> src/embedding/local.rs:49:35
+    |
+ 49 |             .with_intra_threads(4)?
+    |              ---------------------^ `NonNull<OrtCustomOpDomain>` cannot be sent between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: within `OperatorDomain`, the trait `Send` is not implemented for `NonNull<OrtCustomOpDomain>`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+note: required because it appears within the type `OperatorDomain`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/operator/mod.rs:122:12
+    |
+122 | pub struct OperatorDomain {
+    |            ^^^^^^^^^^^^^^
+    = note: required for `Arc<OperatorDomain>` to implement `Send`
+    = note: 1 redundant requirement hidden
+    = note: required for `smallvec::SmallVec<[Arc<OperatorDomain>; 1]>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+error[E0277]: `?` couldn't convert the error: `(dyn Operator + 'static): Sync` is not satisfied
+   --> src/embedding/local.rs:49:35
+    |
+ 49 |             .with_intra_threads(4)?
+    |              ---------------------^ `(dyn Operator + 'static)` cannot be shared between threads safely
+    |              |
+    |              this can't be annotated with `?` because it has type `Result<_, ort::Error<SessionBuilder>>`
+    |
+    = help: the trait `Sync` is not implemented for `(dyn Operator + 'static)`
+    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+    = note: required for `Unique<(dyn Operator + 'static)>` to implement `Sync`
+note: required because it appears within the type `Box<(dyn Operator + 'static)>`
+   --> library/alloc/src/boxed.rs:234:11
+note: required because it appears within the type `operator::bound::BoundOperator`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/operator/bound.rs:12:19
+    |
+ 12 | pub(crate) struct BoundOperator {
+    |                   ^^^^^^^^^^^^^
+    = note: required for `Unique<operator::bound::BoundOperator>` to implement `Sync`
+note: required because it appears within the type `Box<operator::bound::BoundOperator>`
+   --> library/alloc/src/boxed.rs:234:11
+note: required because it appears within the type `PhantomData<Box<operator::bound::BoundOperator>>`
+   --> library/core/src/marker.rs:819:11
+note: required because it appears within the type `ort::__private::alloc::raw_vec::RawVec<Box<operator::bound::BoundOperator>>`
+   --> library/alloc/src/raw_vec/mod.rs:73:18
+note: required because it appears within the type `Vec<Box<operator::bound::BoundOperator>>`
+   --> library/alloc/src/vec/mod.rs:440:11
+note: required because it appears within the type `OperatorDomain`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/operator/mod.rs:122:12
+    |
+122 | pub struct OperatorDomain {
+    |            ^^^^^^^^^^^^^^
+    = note: required for `Arc<OperatorDomain>` to implement `Send`
+    = note: 1 redundant requirement hidden
+    = note: required for `smallvec::SmallVec<[Arc<OperatorDomain>; 1]>` to implement `Send`
+note: required because it appears within the type `SessionBuilder`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/session/builder/mod.rs:71:12
+    |
+ 71 | pub struct SessionBuilder {
+    |            ^^^^^^^^^^^^^^
+note: required because it appears within the type `ort::Error<SessionBuilder>`
+   --> /Users/raczj/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ort-2.0.0-rc.12/src/error.rs:75:12
+    |
+ 75 | pub struct Error<R = ()> {
+    |            ^^^^^
+    = note: required for `anyhow::Error` to implement `From<ort::Error<SessionBuilder>>`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `loci` (lib) due to 18 previous errors
+error: failed to compile `loci v0.2.0 (/Users/raczj/src/Loci)`, intermediate artifacts can be found at `/Users/raczj/src/Loci/target`.
+To reuse those artifacts with a future compilation, set the environment variable `CARGO_TARGET_DIR` to that path.
