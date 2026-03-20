@@ -1,6 +1,6 @@
 [package]
 name = "loci-mcp"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "Cognitive memory MCP server — persistent, structured, cross-session memory for AI agents"
 license = "MIT"
