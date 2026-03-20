@@ -54,7 +54,7 @@ impl LociTools {
 
     /// Store a new memory in the cognitive memory system.
     #[tool(description = "Store a new memory. Types: episodic (events/experiences), semantic (facts/knowledge), procedural (how-to/processes), entity (people/places/things).")]
-    async fn store_memory(
+    pub async fn store_memory(
         &self,
         Parameters(params): Parameters<StoreMemoryParams>,
     ) -> Result<String, String> {
@@ -138,7 +138,7 @@ impl LociTools {
 
     /// Search and retrieve memories using natural language queries.
     #[tool(description = "Search memories by natural language query. Returns ranked results using hybrid vector + keyword search. Provide 'query' for search or 'ids' for direct hydration.")]
-    async fn recall_memory(
+    pub async fn recall_memory(
         &self,
         Parameters(params): Parameters<RecallMemoryParams>,
     ) -> Result<String, String> {
@@ -264,7 +264,7 @@ impl LociTools {
 
     /// Forget a memory by ID (soft-supersede or hard delete).
     #[tool(description = "Forget a memory by ID. Soft delete (default) marks it as superseded. Hard delete permanently removes it from all tables including vectors and FTS index.")]
-    async fn forget_memory(
+    pub async fn forget_memory(
         &self,
         Parameters(params): Parameters<ForgetMemoryParams>,
     ) -> Result<String, String> {
@@ -309,7 +309,7 @@ impl LociTools {
 
     /// Get statistics about the memory store.
     #[tool(description = "Get memory store statistics: counts by type and scope, entity relations count, storage size, oldest/newest timestamps.")]
-    async fn memory_stats(
+    pub async fn memory_stats(
         &self,
         Parameters(params): Parameters<MemoryStatsParams>,
     ) -> Result<String, String> {
@@ -334,7 +334,7 @@ impl LociTools {
 
     /// Inspect a specific memory by ID.
     #[tool(description = "Inspect a memory by ID. Returns full content, metadata, confidence, access history, and optionally related entities and audit log.")]
-    async fn memory_inspect(
+    pub async fn memory_inspect(
         &self,
         Parameters(params): Parameters<MemoryInspectParams>,
     ) -> Result<String, String> {
@@ -358,7 +358,7 @@ impl LociTools {
 
     /// Store a relationship between two entity memories.
     #[tool(description = "Create a relationship between two entity memories (e.g. 'works_at', 'manages', 'part_of'). Both IDs must refer to entity-type memories. Idempotent on (subject, predicate, object).")]
-    async fn store_relation(
+    pub async fn store_relation(
         &self,
         Parameters(params): Parameters<StoreRelationParams>,
     ) -> Result<String, String> {
