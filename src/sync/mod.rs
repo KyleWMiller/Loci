@@ -6,6 +6,7 @@
 //! conflicts and any transport that copies files works. See `docs/sync.md`.
 
 pub mod apply;
+pub mod backfill;
 pub mod files;
 pub mod log;
 pub mod ops;
@@ -42,6 +43,8 @@ pub struct SyncSummary {
     pub scrubbed: u64,
     /// Remote files read.
     pub remotes: u64,
+    /// Ops emitted once for data that predates replication (first sync only).
+    pub backfilled: u64,
 }
 
 /// Override the stored machine ID (config `sync.machine_id`). Changing it is safe but
@@ -78,6 +81,14 @@ pub fn run_sync(conn: &mut Connection, dir: &Path, embed: Embedder<'_>) -> Resul
 
     let machine_id = crate::db::migrations::get_machine_id(conn)?;
     let mut summary = SyncSummary::default();
+
+    // First sync on a database that predates replication: publish what already exists
+    // (before applying anything, so remote data is never mistaken for local).
+    {
+        let tx = conn.transaction()?;
+        summary.backfilled = backfill::backfill_existing(&tx)?;
+        tx.commit()?;
+    }
 
     apply_remotes(conn, dir, &machine_id, embed, &mut summary)?;
     summary.scrubbed = files::scrub_own_file(conn, dir, &machine_id)?;

@@ -41,6 +41,12 @@ pub fn sync(config: &LociConfig, dir: Option<&Path>) -> Result<()> {
         "Sync complete (machine {machine_id}, dir {}):",
         dir.display()
     );
+    if s.backfilled > 0 {
+        println!(
+            "  Backfilled:      {} ops for pre-existing data",
+            s.backfilled
+        );
+    }
     println!("  Ops written:     {}", s.written);
     println!("  Ops applied:     {}", s.applied);
     println!(

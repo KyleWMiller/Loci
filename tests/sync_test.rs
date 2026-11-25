@@ -551,3 +551,75 @@ fn stats_report_sync_status_and_forks() {
     assert!(json["sync"]["machine_id"].is_string());
     assert!(json["total_memories"].is_u64());
 }
+
+#[test]
+fn first_sync_publishes_data_that_predates_replication_exactly_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let (mut a, mut b) = (test_db(), test_db());
+
+    // Build "0.2.x-era" data, then drop every op as if it had been created before ops existed.
+    let e1 = put(
+        &mut a,
+        "synthetic legacy entity one",
+        MemoryType::Entity,
+        1,
+        None,
+    );
+    let e2 = put(
+        &mut a,
+        "synthetic legacy entity two",
+        MemoryType::Entity,
+        2,
+        None,
+    );
+    store_relation(&a, &e1, "legacy", &e2).unwrap();
+    let old = put(
+        &mut a,
+        "synthetic legacy fact v1",
+        MemoryType::Semantic,
+        3,
+        None,
+    );
+    put(
+        &mut a,
+        "synthetic legacy fact v2",
+        MemoryType::Semantic,
+        4,
+        Some(&old),
+    );
+    let gone = put(
+        &mut a,
+        "synthetic legacy forgotten",
+        MemoryType::Semantic,
+        5,
+        None,
+    );
+    forget_memory(&mut a, &gone, None, false).unwrap();
+    a.execute_batch("DELETE FROM op_log; DELETE FROM supersessions; DELETE FROM tombstones;")
+        .unwrap();
+
+    let first = sync(&mut a, dir.path());
+    assert_eq!(first.backfilled, 5 + 2 + 1); // 5 puts, supersede + forget, 1 relation
+    // A post-migration memory is not duplicated by a second backfill.
+    put(
+        &mut a,
+        "synthetic created after migration",
+        MemoryType::Semantic,
+        6,
+        None,
+    );
+    let second = sync(&mut a, dir.path());
+    assert_eq!((second.backfilled, second.written), (0, 1));
+
+    full_cycle(&mut a, &mut b, dir.path());
+    assert_eq!(state(&a), state(&b));
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM memories"), 6);
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM entity_relations"), 1);
+    let forgotten: i64 = count(
+        &b,
+        "SELECT COUNT(*) FROM memories WHERE superseded_by = 'forgotten'",
+    );
+    assert_eq!(forgotten, 1);
+    // B's own backfill found only remote data, which already has ops/records: nothing local.
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM op_log"), 0);
+}
