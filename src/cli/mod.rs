@@ -13,6 +13,7 @@ pub mod re_embed;
 pub mod reset;
 pub mod search;
 pub mod stats;
+pub mod sync;
 
 use anyhow::{Context, Result};
 use indicatif::{ProgressBar, ProgressStyle};

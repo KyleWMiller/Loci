@@ -4,8 +4,8 @@
 //! transaction: dedup check via vector similarity, insert into the memories table, sync
 //! FTS5 index, insert embedding vector, handle supersession, and write an audit log.
 
-use anyhow::{bail, Result};
-use rusqlite::{params, Connection, Transaction};
+use anyhow::{Result, bail};
+use rusqlite::{Connection, Transaction, params};
 use serde::Serialize;
 
 use crate::memory::types::{MemoryType, Scope};
@@ -22,11 +22,66 @@ pub struct StoreMemoryResult {
     pub deduplicated: bool,
     /// ID of the memory that was superseded by this one, if any.
     pub superseded: Option<String>,
+    /// `true` if an explicit `id` was supplied and a memory with that ID already
+    /// existed; nothing was written. Internal only: never serialized to MCP clients.
+    #[serde(skip)]
+    pub already_exists: bool,
+}
+
+/// A memory to insert. `id`, `created_at` and `updated_at` are normally generated;
+/// replication (import, sync) supplies them to preserve identity across machines.
+#[derive(Debug, Clone)]
+pub struct NewMemory<'a> {
+    pub content: &'a str,
+    pub memory_type: MemoryType,
+    pub scope: Scope,
+    pub group: Option<&'a str>,
+    pub confidence: f64,
+    pub metadata: Option<&'a serde_json::Value>,
+    /// ID of an existing memory this one supersedes.
+    pub supersedes: Option<&'a str>,
+    /// Explicit memory ID (UUID v7 is generated when `None`).
+    pub id: Option<&'a str>,
+    /// RFC 3339 creation time (defaults to now).
+    pub created_at: Option<&'a str>,
+    /// RFC 3339 update time (defaults to `created_at`).
+    pub updated_at: Option<&'a str>,
+    /// Emit replication ops (`memory.put`, `memory.supersede`) for this insert. `true`
+    /// for every local mutation; sync apply sets it to `false` so ops never echo.
+    pub emit: bool,
+}
+
+impl<'a> NewMemory<'a> {
+    /// A new memory with a generated ID and timestamps, no supersession.
+    pub fn new(
+        content: &'a str,
+        memory_type: MemoryType,
+        scope: Scope,
+        group: Option<&'a str>,
+        confidence: f64,
+        metadata: Option<&'a serde_json::Value>,
+    ) -> Self {
+        Self {
+            content,
+            memory_type,
+            scope,
+            group,
+            confidence,
+            metadata,
+            supersedes: None,
+            id: None,
+            created_at: None,
+            updated_at: None,
+            emit: true,
+        }
+    }
 }
 
 /// Full write path: dedup check → insert or update → FTS sync → vec insert → audit log.
 ///
-/// All operations run inside a transaction for atomicity.
+/// All operations run inside a transaction for atomicity. This is the public MCP
+/// path: it always generates a fresh ID and runs similarity dedup.
+#[allow(clippy::too_many_arguments)]
 pub fn store_memory(
     conn: &mut Connection,
     content: &str,
@@ -39,52 +94,95 @@ pub fn store_memory(
     embedding: &[f32],
     dedup_threshold: f64,
 ) -> Result<StoreMemoryResult> {
+    let mut new = NewMemory::new(content, memory_type, scope, group, confidence, metadata);
+    new.supersedes = supersedes;
+    store_new_memory(conn, &new, embedding, Some(dedup_threshold))
+}
+
+/// Generalized write path used by [`store_memory`], import and sync.
+///
+/// `dedup_threshold = None` disables similarity dedup entirely. If `new.id` is set
+/// and a memory with that ID already exists, nothing is written (idempotent) and the
+/// result has `already_exists = true`.
+pub fn store_new_memory(
+    conn: &mut Connection,
+    new: &NewMemory<'_>,
+    embedding: &[f32],
+    dedup_threshold: Option<f64>,
+) -> Result<StoreMemoryResult> {
     let tx = conn.transaction()?;
+    let result = store_new_memory_tx(&tx, new, embedding, dedup_threshold)?;
+    tx.commit()?;
+    Ok(result)
+}
+
+/// Transaction-scoped body of [`store_new_memory`].
+pub(crate) fn store_new_memory_tx(
+    tx: &Transaction<'_>,
+    new: &NewMemory<'_>,
+    embedding: &[f32],
+    dedup_threshold: Option<f64>,
+) -> Result<StoreMemoryResult> {
+    let memory_type = new.memory_type;
+
+    // 0. Explicit ID that already exists: ignore (idempotent).
+    if let Some(id) = new.id {
+        let exists: bool = tx.query_row(
+            "SELECT COUNT(*) > 0 FROM memories WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )?;
+        if exists {
+            return Ok(StoreMemoryResult {
+                id: id.to_string(),
+                memory_type: memory_type.as_str().to_string(),
+                deduplicated: false,
+                superseded: None,
+                already_exists: true,
+            });
+        }
+    }
 
     // 1. Dedup gate
-    if let Some(existing_id) = check_dedup(&tx, memory_type, embedding, dedup_threshold)? {
-        update_dedup_match(&tx, &existing_id)?;
+    if let Some(threshold) = dedup_threshold
+        && let Some(existing_id) = check_dedup(tx, memory_type, embedding, threshold)?
+    {
+        update_dedup_match(tx, &existing_id)?;
         write_audit_log(
-            &tx,
+            tx,
             "update",
             &existing_id,
             Some(&serde_json::json!({"reason": "deduplication"})),
         )?;
-        tx.commit()?;
         return Ok(StoreMemoryResult {
             id: existing_id,
             memory_type: memory_type.as_str().to_string(),
             deduplicated: true,
             superseded: None,
+            already_exists: false,
         });
     }
 
-    // 2. Generate UUID v7
-    let id = uuid::Uuid::now_v7().to_string();
+    // 2. UUID v7 unless supplied
+    let id = match new.id {
+        Some(id) => id.to_string(),
+        None => uuid::Uuid::now_v7().to_string(),
+    };
 
     // 3. Insert into memories table
-    let rowid = insert_memory(
-        &tx,
-        &id,
-        memory_type,
-        content,
-        scope,
-        group,
-        confidence,
-        metadata,
-    )?;
+    let rowid = insert_memory(tx, &id, new)?;
 
     // 4. Sync FTS5 index
-    insert_fts(&tx, rowid, content, &id, memory_type)?;
+    insert_fts(tx, rowid, new.content, &id, memory_type)?;
 
     // 5. Insert embedding vector
-    insert_vec(&tx, &id, embedding)?;
+    insert_vec(tx, &id, embedding)?;
 
     // 6. Handle supersession
-    let superseded = if let Some(old_id) = supersedes {
-        set_superseded(&tx, old_id, &id)?;
+    let superseded = if let Some(old_id) = new.supersedes {
+        set_superseded(tx, old_id, &id)?;
         write_audit_log(
-            &tx,
+            tx,
             "supersede",
             old_id,
             Some(&serde_json::json!({"superseded_by": &id})),
@@ -95,15 +193,28 @@ pub fn store_memory(
     };
 
     // 7. Audit log for the new memory
-    write_audit_log(&tx, "create", &id, None)?;
+    write_audit_log(tx, "create", &id, None)?;
 
-    tx.commit()?;
+    // 8. Replication ops (same transaction as the state change)
+    if new.emit {
+        crate::sync::log::emit_put_for(tx, &id)?;
+        if let Some(old_id) = new.supersedes {
+            crate::sync::log::emit(
+                tx,
+                crate::sync::ops::Op::MemorySupersede {
+                    old_id: old_id.to_string(),
+                    new_id: id.clone(),
+                },
+            )?;
+        }
+    }
 
     Ok(StoreMemoryResult {
         id,
         memory_type: memory_type.as_str().to_string(),
         deduplicated: false,
         superseded,
+        already_exists: false,
     })
 }
 
@@ -145,10 +256,11 @@ fn check_dedup(
             )
             .optional()?;
 
-        if let Some((candidate_type, superseded_by)) = row {
-            if candidate_type == memory_type.as_str() && superseded_by.is_none() {
-                return Ok(Some(candidate_id));
-            }
+        if let Some((candidate_type, superseded_by)) = row
+            && candidate_type == memory_type.as_str()
+            && superseded_by.is_none()
+        {
+            return Ok(Some(candidate_id));
         }
     }
 
@@ -166,30 +278,24 @@ fn update_dedup_match(conn: &Transaction, memory_id: &str) -> Result<()> {
 }
 
 /// Insert a new memory row. Returns the SQLite rowid for FTS5 sync.
-fn insert_memory(
-    conn: &Transaction,
-    id: &str,
-    memory_type: MemoryType,
-    content: &str,
-    scope: Scope,
-    group: Option<&str>,
-    confidence: f64,
-    metadata: Option<&serde_json::Value>,
-) -> Result<i64> {
+fn insert_memory(conn: &Transaction, id: &str, new: &NewMemory<'_>) -> Result<i64> {
     let now = chrono::Utc::now().to_rfc3339();
-    let metadata_json = metadata.map(|m| serde_json::to_string(m)).transpose()?;
+    let created_at = new.created_at.unwrap_or(&now);
+    let updated_at = new.updated_at.unwrap_or(created_at);
+    let metadata_json = new.metadata.map(serde_json::to_string).transpose()?;
 
     conn.execute(
         "INSERT INTO memories (id, type, content, source_group, scope, confidence, access_count, created_at, updated_at, metadata) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?7, ?8)",
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, ?7, ?8, ?9)",
         params![
             id,
-            memory_type.as_str(),
-            content,
-            group,
-            scope.as_str(),
-            confidence,
-            now,
+            new.memory_type.as_str(),
+            new.content,
+            new.group,
+            new.scope.as_str(),
+            new.confidence,
+            created_at,
+            updated_at,
             metadata_json,
         ],
     )?;
@@ -270,6 +376,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 
@@ -710,5 +817,171 @@ mod tests {
 
         assert!(!result3.deduplicated);
         assert_ne!(result3.id, result1.id);
+    }
+
+    const FIXED_ID: &str = "0190aaaa-0000-7000-8000-000000000001";
+
+    fn explicit<'a>(content: &'a str, id: &'a str) -> NewMemory<'a> {
+        let mut m = NewMemory::new(
+            content,
+            MemoryType::Semantic,
+            Scope::Global,
+            Some("g"),
+            0.7,
+            None,
+        );
+        m.id = Some(id);
+        m.created_at = Some("2026-01-01T00:00:00+00:00");
+        m.updated_at = Some("2026-01-02T00:00:00+00:00");
+        m
+    }
+
+    #[test]
+    fn explicit_id_and_timestamps_are_kept() {
+        let mut conn = test_db();
+        let r = store_new_memory(
+            &mut conn,
+            &explicit("synthetic alpha", FIXED_ID),
+            &embedding_a(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(r.id, FIXED_ID);
+        assert!(!r.already_exists);
+        let (created, updated, conf): (String, String, f64) = conn
+            .query_row(
+                "SELECT created_at, updated_at, confidence FROM memories WHERE id = ?1",
+                params![FIXED_ID],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(created, "2026-01-01T00:00:00+00:00");
+        assert_eq!(updated, "2026-01-02T00:00:00+00:00");
+        assert_eq!(conf, 0.7);
+    }
+
+    #[test]
+    fn explicit_id_has_fts_and_vec_rows() {
+        let mut conn = test_db();
+        store_new_memory(
+            &mut conn,
+            &explicit("synthetic zebra", FIXED_ID),
+            &embedding_a(),
+            None,
+        )
+        .unwrap();
+        let fts_id: String = conn
+            .query_row(
+                "SELECT id FROM memories_fts WHERE memories_fts MATCH 'zebra'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(fts_id, FIXED_ID);
+        let vec_id: String = conn
+            .query_row(
+                "SELECT id FROM memories_vec WHERE id = ?1",
+                params![FIXED_ID],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(vec_id, FIXED_ID);
+    }
+
+    #[test]
+    fn existing_id_is_ignored_without_side_effects() {
+        let mut conn = test_db();
+        store_new_memory(
+            &mut conn,
+            &explicit("synthetic first", FIXED_ID),
+            &embedding_a(),
+            None,
+        )
+        .unwrap();
+        let counts = |c: &Connection| -> (i64, i64, i64) {
+            (
+                c.query_row("SELECT COUNT(*) FROM memories", [], |r| r.get(0))
+                    .unwrap(),
+                c.query_row("SELECT COUNT(*) FROM memories_vec", [], |r| r.get(0))
+                    .unwrap(),
+                c.query_row("SELECT COUNT(*) FROM memory_log", [], |r| r.get(0))
+                    .unwrap(),
+            )
+        };
+        let before = counts(&conn);
+
+        let r = store_new_memory(
+            &mut conn,
+            &explicit("synthetic second", FIXED_ID),
+            &embedding_b(),
+            None,
+        )
+        .unwrap();
+        assert!(r.already_exists);
+        assert_eq!(r.id, FIXED_ID);
+        assert_eq!(counts(&conn), before);
+        let content: String = conn
+            .query_row(
+                "SELECT content FROM memories WHERE id = ?1",
+                params![FIXED_ID],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(content, "synthetic first");
+    }
+
+    #[test]
+    fn dedup_off_inserts_near_duplicate_but_on_dedups() {
+        let mut conn = test_db();
+        store_new_memory(
+            &mut conn,
+            &explicit("synthetic one", FIXED_ID),
+            &embedding_a(),
+            None,
+        )
+        .unwrap();
+
+        let other = "0190aaaa-0000-7000-8000-000000000002";
+        let off = store_new_memory(
+            &mut conn,
+            &explicit("synthetic two", other),
+            &embedding_a_similar(),
+            None,
+        )
+        .unwrap();
+        assert!(!off.deduplicated);
+        assert_eq!(off.id, other);
+
+        let third = "0190aaaa-0000-7000-8000-000000000003";
+        let on = store_new_memory(
+            &mut conn,
+            &explicit("synthetic three", third),
+            &embedding_a_similar(),
+            Some(0.92),
+        )
+        .unwrap();
+        assert!(on.deduplicated);
+        assert_ne!(on.id, third);
+    }
+
+    #[test]
+    fn public_path_still_generates_ids_and_hides_internal_field() {
+        let mut conn = test_db();
+        let r = store_memory(
+            &mut conn,
+            "synthetic plain",
+            MemoryType::Semantic,
+            Scope::Global,
+            None,
+            1.0,
+            None,
+            None,
+            &embedding_a(),
+            0.92,
+        )
+        .unwrap();
+        assert_eq!(uuid::Uuid::parse_str(&r.id).unwrap().get_version_num(), 7);
+        let json = serde_json::to_value(&r).unwrap();
+        assert!(json.get("already_exists").is_none());
     }
 }

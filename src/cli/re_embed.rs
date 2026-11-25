@@ -12,25 +12,23 @@ use crate::memory::embedding_to_bytes;
 /// Re-embed all active memories with the currently configured model.
 pub async fn re_embed(config: &LociConfig) -> Result<()> {
     let db_path = config.resolved_db_path();
-    let conn = db::open_database(&db_path)
-        .context("failed to open database")?;
+    let conn = db::open_database(&db_path).context("failed to open database")?;
 
     // Load embedding provider
-    let provider: Arc<dyn embedding::EmbeddingProvider> =
-        Arc::from(embedding::create_provider(&config.embedding)
-            .context("failed to create embedding provider")?);
+    let provider: Arc<dyn embedding::EmbeddingProvider> = Arc::from(
+        embedding::create_provider(&config.embedding)
+            .context("failed to create embedding provider")?,
+    );
 
     // Fetch all active memories
     let memories: Vec<(String, String)> = {
-        let mut stmt = conn.prepare(
-            "SELECT id, content FROM memories WHERE superseded_by IS NULL"
-        )?;
-        let rows = stmt
-            .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-        rows
+        let mut stmt =
+            conn.prepare("SELECT id, content FROM memories WHERE superseded_by IS NULL")?;
+
+        stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?
     };
 
     let total = memories.len();
@@ -39,7 +37,10 @@ pub async fn re_embed(config: &LociConfig) -> Result<()> {
         return Ok(());
     }
 
-    println!("Re-embedding {total} memories with model '{}'...", config.embedding.model);
+    println!(
+        "Re-embedding {total} memories with model '{}'...",
+        config.embedding.model
+    );
 
     let pb = ProgressBar::new(total as u64);
     pb.set_style(
@@ -80,6 +81,9 @@ pub async fn re_embed(config: &LociConfig) -> Result<()> {
     // Update stored model identifier
     db::migrations::set_embedding_model(&conn, &config.embedding.model)?;
 
-    println!("Re-embedded {total} memories with model '{}'.", config.embedding.model);
+    println!(
+        "Re-embedded {total} memories with model '{}'.",
+        config.embedding.model
+    );
     Ok(())
 }

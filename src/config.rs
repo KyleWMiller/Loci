@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use tracing::info;
 
 /// Top-level Loci configuration, deserialized from `config.toml`.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 #[serde(default)]
 pub struct LociConfig {
     /// MCP server transport and logging settings.
@@ -23,6 +23,18 @@ pub struct LociConfig {
     pub retrieval: RetrievalConfig,
     /// Lifecycle management (decay, compaction, promotion, cleanup).
     pub maintenance: MaintenanceConfig,
+    /// Multi-machine replication settings (`loci sync`).
+    pub sync: SyncConfig,
+}
+
+/// Replication settings. Both fields are optional.
+#[derive(Debug, Deserialize, Clone, Default)]
+#[serde(default)]
+pub struct SyncConfig {
+    /// Default directory for `loci sync` (supports `~` expansion).
+    pub dir: Option<String>,
+    /// Override this database's stable `machine_id` (letters, digits, `-`, `_`, `.`).
+    pub machine_id: Option<String>,
 }
 
 /// MCP server transport and logging settings.
@@ -101,18 +113,6 @@ pub struct MaintenanceConfig {
     pub cleanup_confidence_floor: f64,
     /// Days without access before a low-confidence memory is cleaned up (default 90).
     pub cleanup_no_access_days: u64,
-}
-
-impl Default for LociConfig {
-    fn default() -> Self {
-        Self {
-            server: ServerConfig::default(),
-            storage: StorageConfig::default(),
-            embedding: EmbeddingConfig::default(),
-            retrieval: RetrievalConfig::default(),
-            maintenance: MaintenanceConfig::default(),
-        }
-    }
 }
 
 impl Default for ServerConfig {
@@ -204,8 +204,7 @@ impl LociConfig {
     pub fn load_from(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
         let mut config = if path.exists() {
-            let contents =
-                std::fs::read_to_string(path).context("failed to read config file")?;
+            let contents = std::fs::read_to_string(path).context("failed to read config file")?;
             toml::from_str(&contents).context("failed to parse config TOML")?
         } else {
             info!("no config file at {}, using defaults", path.display());
@@ -222,7 +221,10 @@ impl LociConfig {
     }
 
     /// Apply overrides using a custom env lookup function.
-    fn apply_env_overrides_with(&mut self, env: impl Fn(&str) -> Result<String, std::env::VarError>) {
+    fn apply_env_overrides_with(
+        &mut self,
+        env: impl Fn(&str) -> Result<String, std::env::VarError>,
+    ) {
         if let Ok(val) = env("LOCI_DB") {
             self.storage.db_path = val;
         }

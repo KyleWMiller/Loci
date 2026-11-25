@@ -1,18 +1,15 @@
-mod cli;
-mod config;
-mod db;
-mod embedding;
-mod memory;
-mod server;
-mod tools;
-
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use loci::{cli, config, server};
 use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
-#[command(name = "loci", version, about = "Cognitive memory MCP server for AI agents")]
+#[command(
+    name = "loci",
+    version,
+    about = "Cognitive memory MCP server for AI agents"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -64,6 +61,11 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Replicate memories with other machines through a shared directory
+    Sync {
+        /// Sync directory (default: `[sync] dir` from config)
+        dir: Option<PathBuf>,
+    },
     /// Run database diagnostics and health check
     Doctor,
     /// Re-embed all memories with the currently configured model
@@ -87,8 +89,8 @@ async fn main() -> Result<()> {
 
     // Initialize tracing with the configured log level.
     // Log to stderr so stdout stays clean for MCP JSON-RPC.
-    let filter = EnvFilter::try_new(&config.server.log_level)
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let filter =
+        EnvFilter::try_new(&config.server.log_level).unwrap_or_else(|_| EnvFilter::new("info"));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
@@ -100,9 +102,7 @@ async fn main() -> Result<()> {
             match transport {
                 "stdio" => server::serve_stdio(config).await?,
                 "sse" => server::serve_sse(config).await?,
-                other => anyhow::bail!(
-                    "unknown transport '{other}'. Supported: stdio, sse"
-                ),
+                other => anyhow::bail!("unknown transport '{other}'. Supported: stdio, sse"),
             }
         }
         Command::Model { action } => match action {
@@ -136,6 +136,9 @@ async fn main() -> Result<()> {
         }
         Command::Cleanup { dry_run } => {
             cli::maintenance::cleanup(&config, dry_run)?;
+        }
+        Command::Sync { dir } => {
+            cli::sync::sync(&config, dir.as_deref())?;
         }
         Command::Doctor => {
             cli::doctor::doctor(&config)?;

@@ -6,7 +6,7 @@
 //! - [`cleanup_stale`]: Remove low-confidence, long-unaccessed memories
 
 use anyhow::Result;
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
@@ -173,18 +173,16 @@ pub fn compact_episodic(
                AND created_at < ?1 \
              ORDER BY source_group, week_key, created_at",
         )?;
-        let collected = stmt
-            .query_map(params![cutoff_str], |row| {
-                Ok(EpisodicRow {
-                    id: row.get(0)?,
-                    content: row.get(1)?,
-                    source_group: row.get(2)?,
-                    scope: row.get(3)?,
-                    week_key: row.get(4)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-        collected
+        stmt.query_map(params![cutoff_str], |row| {
+            Ok(EpisodicRow {
+                id: row.get(0)?,
+                content: row.get(1)?,
+                source_group: row.get(2)?,
+                scope: row.get(3)?,
+                week_key: row.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?
     };
 
     // Group by (source_group, week_key)
@@ -246,6 +244,13 @@ pub fn compact_episodic(
                 "UPDATE memories SET superseded_by = ?1, updated_at = ?2 WHERE id = ?3",
                 params![store_result.id, chrono::Utc::now().to_rfc3339(), member.id],
             )?;
+            crate::sync::log::emit(
+                &tx,
+                crate::sync::ops::Op::MemorySupersede {
+                    old_id: member.id.clone(),
+                    new_id: store_result.id.clone(),
+                },
+            )?;
         }
         write_audit_log(
             &tx,
@@ -293,19 +298,17 @@ pub fn promote_episodic_to_semantic(
              JOIN memories_vec v ON m.id = v.id \
              WHERE m.type = 'episodic' AND m.superseded_by IS NULL",
         )?;
-        let collected = stmt
-            .query_map([], |row| {
-                let embedding_bytes: Vec<u8> = row.get(3)?;
-                let embedding = bytes_to_embedding(&embedding_bytes);
-                Ok(EpisodicCandidate {
-                    id: row.get(0)?,
-                    content: row.get(1)?,
-                    access_count: row.get(2)?,
-                    embedding,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-        collected
+        stmt.query_map([], |row| {
+            let embedding_bytes: Vec<u8> = row.get(3)?;
+            let embedding = bytes_to_embedding(&embedding_bytes);
+            Ok(EpisodicCandidate {
+                id: row.get(0)?,
+                content: row.get(1)?,
+                access_count: row.get(2)?,
+                embedding,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?
     };
 
     let mut processed: HashSet<String> = HashSet::new();
@@ -419,8 +422,10 @@ pub fn promote_episodic_to_semantic(
 /// Convert raw bytes back to f32 embedding.
 fn bytes_to_embedding(bytes: &[u8]) -> Vec<f32> {
     bytes
-        .chunks_exact(4)
-        .map(|chunk| f32::from_le_bytes(chunk.try_into().unwrap()))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| f32::from_le_bytes(*chunk))
         .collect()
 }
 
@@ -450,8 +455,9 @@ pub fn cleanup_stale(
                    OR (last_accessed IS NOT NULL AND last_accessed < ?2) \
                )",
         )?;
-        let collected = stmt
-            .query_map(params![config.cleanup_confidence_floor, threshold_str], |row| {
+        stmt.query_map(
+            params![config.cleanup_confidence_floor, threshold_str],
+            |row| {
                 let content: String = row.get(3)?;
                 Ok(CleanupCandidate {
                     id: row.get(0)?,
@@ -461,9 +467,9 @@ pub fn cleanup_stale(
                     last_accessed: row.get(4)?,
                     created_at: row.get(5)?,
                 })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-        collected
+            },
+        )?
+        .collect::<Result<Vec<_>, _>>()?
     };
 
     if dry_run {
@@ -508,10 +514,7 @@ fn hard_delete_memory(conn: &mut Connection, memory_id: &str) -> Result<()> {
     )?;
 
     // Remove from vector table
-    tx.execute(
-        "DELETE FROM memories_vec WHERE id = ?1",
-        params![memory_id],
-    )?;
+    tx.execute("DELETE FROM memories_vec WHERE id = ?1", params![memory_id])?;
 
     // Audit log
     write_audit_log(
@@ -523,6 +526,20 @@ fn hard_delete_memory(conn: &mut Connection, memory_id: &str) -> Result<()> {
 
     // Delete from memories (cascades entity_relations via FK)
     tx.execute("DELETE FROM memories WHERE id = ?1", params![memory_id])?;
+
+    // Cleanup is local, use-driven maintenance (it depends on locally decayed
+    // confidence and access times), so it is NOT replicated as a forget op. We still
+    // tombstone the ID locally so a replayed `memory.put` cannot resurrect it, and
+    // scrub its content from the op log.
+    crate::sync::log::record_tombstone(
+        &tx,
+        memory_id,
+        true,
+        &chrono::Utc::now().to_rfc3339(),
+        None,
+        None,
+    )?;
+    crate::sync::log::scrub_memory_ops(&tx, memory_id)?;
 
     tx.commit()?;
     Ok(())
@@ -540,6 +557,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 
@@ -594,7 +612,15 @@ mod tests {
         embedding: &[f32],
         days_ago: i64,
     ) -> String {
-        let id = insert_memory(conn, content, memory_type, Scope::Group, group, confidence, embedding);
+        let id = insert_memory(
+            conn,
+            content,
+            memory_type,
+            Scope::Group,
+            group,
+            confidence,
+            embedding,
+        );
         let old_date = (chrono::Utc::now() - chrono::Duration::days(days_ago)).to_rfc3339();
         conn.execute(
             "UPDATE memories SET created_at = ?1, updated_at = ?1 WHERE id = ?2",
@@ -866,8 +892,7 @@ mod tests {
             );
         }
 
-        let result =
-            compact_episodic(&mut conn, &TestEmbeddingProvider, &config).unwrap();
+        let result = compact_episodic(&mut conn, &TestEmbeddingProvider, &config).unwrap();
 
         assert_eq!(result.groups_compacted, 1);
         assert_eq!(result.memories_compacted, 4);
@@ -905,8 +930,7 @@ mod tests {
             );
         }
 
-        let result =
-            compact_episodic(&mut conn, &TestEmbeddingProvider, &config).unwrap();
+        let result = compact_episodic(&mut conn, &TestEmbeddingProvider, &config).unwrap();
 
         assert_eq!(result.groups_compacted, 0);
         assert_eq!(result.memories_compacted, 0);

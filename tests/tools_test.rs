@@ -207,8 +207,7 @@ async fn recall_memory_by_ids() {
         supersedes: None,
     };
     let stored: serde_json::Value =
-        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap())
-            .unwrap();
+        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap()).unwrap();
     let id = stored["id"].as_str().unwrap().to_string();
 
     // Recall by ID
@@ -310,8 +309,7 @@ async fn forget_memory_soft_delete() {
         supersedes: None,
     };
     let stored: serde_json::Value =
-        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap())
-            .unwrap();
+        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap()).unwrap();
     let id = stored["id"].as_str().unwrap().to_string();
 
     let forget_params = loci::tools::forget_memory::ForgetMemoryParams {
@@ -343,8 +341,7 @@ async fn forget_memory_hard_delete() {
         supersedes: None,
     };
     let stored: serde_json::Value =
-        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap())
-            .unwrap();
+        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap()).unwrap();
     let id = stored["id"].as_str().unwrap().to_string();
 
     let forget_params = loci::tools::forget_memory::ForgetMemoryParams {
@@ -417,8 +414,7 @@ async fn memory_inspect_happy_path() {
         supersedes: None,
     };
     let stored: serde_json::Value =
-        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap())
-            .unwrap();
+        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap()).unwrap();
     let id = stored["id"].as_str().unwrap().to_string();
 
     // Inspect with relations and log
@@ -498,8 +494,7 @@ async fn store_relation_between_entities() {
             supersedes: None,
         };
         let stored: serde_json::Value =
-            serde_json::from_str(&tools.store_memory(Parameters(params)).await.unwrap())
-                .unwrap();
+            serde_json::from_str(&tools.store_memory(Parameters(params)).await.unwrap()).unwrap();
         ids.push(stored["id"].as_str().unwrap().to_string());
     }
 
@@ -535,8 +530,7 @@ async fn full_lifecycle_store_recall_inspect_forget() {
         supersedes: None,
     };
     let stored: serde_json::Value =
-        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap())
-            .unwrap();
+        serde_json::from_str(&tools.store_memory(Parameters(store_params)).await.unwrap()).unwrap();
     let id = stored["id"].as_str().unwrap().to_string();
 
     // 2. Recall by query
@@ -551,9 +545,13 @@ async fn full_lifecycle_store_recall_inspect_forget() {
         token_budget: None,
         min_confidence: None,
     };
-    let recalled: serde_json::Value =
-        serde_json::from_str(&tools.recall_memory(Parameters(recall_params)).await.unwrap())
-            .unwrap();
+    let recalled: serde_json::Value = serde_json::from_str(
+        &tools
+            .recall_memory(Parameters(recall_params))
+            .await
+            .unwrap(),
+    )
+    .unwrap();
     assert!(!recalled["results"].as_array().unwrap().is_empty());
 
     // 3. Inspect
@@ -569,7 +567,10 @@ async fn full_lifecycle_store_recall_inspect_forget() {
             .unwrap(),
     )
     .unwrap();
-    assert_eq!(inspected["memory"]["content"].as_str().unwrap(), "The capital of France is Paris");
+    assert_eq!(
+        inspected["memory"]["content"].as_str().unwrap(),
+        "The capital of France is Paris"
+    );
 
     // 4. Forget (soft)
     let forget_params = loci::tools::forget_memory::ForgetMemoryParams {
@@ -577,7 +578,10 @@ async fn full_lifecycle_store_recall_inspect_forget() {
         reason: Some("outdated".into()),
         hard_delete: None,
     };
-    tools.forget_memory(Parameters(forget_params)).await.unwrap();
+    tools
+        .forget_memory(Parameters(forget_params))
+        .await
+        .unwrap();
 
     // 5. Verify it no longer appears in search
     let recall_params = loci::tools::recall_memory::RecallMemoryParams {

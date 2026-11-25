@@ -31,7 +31,10 @@ fn health_check_passes_on_valid_db() {
 
     let report = db::check_database_health(&conn).unwrap();
     assert!(report.integrity_ok);
-    assert_eq!(report.schema_version, db::migrations::CURRENT_SCHEMA_VERSION);
+    assert_eq!(
+        report.schema_version,
+        db::migrations::CURRENT_SCHEMA_VERSION
+    );
     assert!(!report.sqlite_vec_version.is_empty());
     assert_eq!(report.memory_count, 0);
     assert_eq!(report.relation_count, 0);

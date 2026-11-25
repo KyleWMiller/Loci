@@ -83,10 +83,7 @@ pub fn cleanup(config: &LociConfig, dry_run: bool) -> Result<()> {
             "Found {} candidate(s) for cleanup (dry run — nothing deleted):\n",
             result.candidates.len()
         );
-        println!(
-            "{:<38} {:<12} {:<10} {}",
-            "ID", "Type", "Confidence", "Preview"
-        );
+        println!("{:<38} {:<12} {:<10} Preview", "ID", "Type", "Confidence");
         println!("{}", "-".repeat(90));
         for c in &result.candidates {
             println!(

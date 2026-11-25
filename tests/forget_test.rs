@@ -9,7 +9,13 @@ use loci::memory::types::{MemoryType, Scope};
 fn soft_delete_marks_as_forgotten() {
     let mut conn = test_db();
     let id = insert_memory(
-        &mut conn, "Something to forget", MemoryType::Episodic, Scope::Group, "default", 1.0, &test_embedding(0),
+        &mut conn,
+        "Something to forget",
+        MemoryType::Episodic,
+        Scope::Group,
+        "default",
+        1.0,
+        &test_embedding(0),
     );
 
     let result = forget_memory(&mut conn, &id, Some("no longer relevant"), false).unwrap();
@@ -24,7 +30,13 @@ fn soft_delete_marks_as_forgotten() {
 fn hard_delete_removes_completely() {
     let mut conn = test_db();
     let id = insert_memory(
-        &mut conn, "Something to permanently delete", MemoryType::Semantic, Scope::Global, "default", 1.0, &test_embedding(10),
+        &mut conn,
+        "Something to permanently delete",
+        MemoryType::Semantic,
+        Scope::Global,
+        "default",
+        1.0,
+        &test_embedding(10),
     );
 
     let result = forget_memory(&mut conn, &id, None, true).unwrap();

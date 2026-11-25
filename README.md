@@ -175,7 +175,8 @@ loci search <query>               Hybrid search from terminal
 loci stats [--group GROUP]        Memory statistics
 loci inspect <id>                 Full memory details
 loci export > backup.json         Export all memories (JSON)
-loci import backup.json           Import memories (re-embeds)
+loci import backup.json           Import memories (ID-preserving, idempotent)
+loci sync [DIR]                   Replicate with other machines via a shared directory
 loci compact                      Run maintenance (decay + compact + promote)
 loci cleanup [--dry-run]          Preview or delete stale memories
 loci doctor                       Database health check + diagnostics
@@ -215,6 +216,10 @@ recall_token_budget = 4000
 rrf_k = 60
 dedup_threshold = 0.92
 
+[sync]
+# dir = "~/loci-sync"
+# machine_id = "laptop"
+
 [maintenance]
 episodic_decay_factor = 0.95
 semantic_decay_factor = 0.99
@@ -233,6 +238,18 @@ Environment variable overrides:
 
 ---
 
+## Syncing between machines
+
+Use Loci from several machines without a server: each keeps its own database and
+`loci sync <dir>` exchanges small JSON-lines op files (`<dir>/<machine_id>.jsonl`) that
+any file-copying tool (rsync, unison) can carry. IDs are preserved, applying is
+idempotent, hard deletes remove content everywhere, and conflicting supersessions are
+recorded as forks instead of being silently overwritten. Do not use a git repo as the
+transport (history would keep hard-deleted content). Full model, op format, conflict
+rules and what is not replicated: [docs/sync.md](docs/sync.md).
+
+---
+
 ## Documentation
 
 | Doc | Description |
@@ -241,6 +258,7 @@ Environment variable overrides:
 | [Getting Started](docs/getting-started.md) | Full setup guide, MCP config, agent instructions, maintenance |
 | [Architecture](docs/architecture.md) | System diagrams, storage schema, search pipeline, module map |
 | [Cheatsheet](docs/cheatsheet.md) | Quick reference for all tools, CLI commands, and config |
+| [Sync](docs/sync.md) | Replicating memories between machines |
 
 ---
 

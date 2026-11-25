@@ -13,14 +13,34 @@ fn store_and_inspect_relation() {
 
     // Create two entity memories
     let alice_id = store_memory(
-        &mut conn, "Alice is a software engineer", MemoryType::Entity, Scope::Global,
-        Some("default"), 1.0, None, None, &test_embedding(0), 0.92,
-    ).unwrap().id;
+        &mut conn,
+        "Alice is a software engineer",
+        MemoryType::Entity,
+        Scope::Global,
+        Some("default"),
+        1.0,
+        None,
+        None,
+        &test_embedding(0),
+        0.92,
+    )
+    .unwrap()
+    .id;
 
     let acme_id = store_memory(
-        &mut conn, "Acme Corp is a tech company", MemoryType::Entity, Scope::Global,
-        Some("default"), 1.0, None, None, &test_embedding(100), 0.92,
-    ).unwrap().id;
+        &mut conn,
+        "Acme Corp is a tech company",
+        MemoryType::Entity,
+        Scope::Global,
+        Some("default"),
+        1.0,
+        None,
+        None,
+        &test_embedding(100),
+        0.92,
+    )
+    .unwrap()
+    .id;
 
     // Create relation
     let rel = store_relation(&conn, &alice_id, "works_at", &acme_id).unwrap();
@@ -38,14 +58,34 @@ fn relation_dedup_is_idempotent() {
     let mut conn = test_db();
 
     let a = store_memory(
-        &mut conn, "Entity A", MemoryType::Entity, Scope::Global,
-        Some("default"), 1.0, None, None, &test_embedding(0), 0.92,
-    ).unwrap().id;
+        &mut conn,
+        "Entity A",
+        MemoryType::Entity,
+        Scope::Global,
+        Some("default"),
+        1.0,
+        None,
+        None,
+        &test_embedding(0),
+        0.92,
+    )
+    .unwrap()
+    .id;
 
     let b = store_memory(
-        &mut conn, "Entity B", MemoryType::Entity, Scope::Global,
-        Some("default"), 1.0, None, None, &test_embedding(100), 0.92,
-    ).unwrap().id;
+        &mut conn,
+        "Entity B",
+        MemoryType::Entity,
+        Scope::Global,
+        Some("default"),
+        1.0,
+        None,
+        None,
+        &test_embedding(100),
+        0.92,
+    )
+    .unwrap()
+    .id;
 
     let first = store_relation(&conn, &a, "knows", &b).unwrap();
     assert!(!first.deduplicated);
@@ -59,14 +99,34 @@ fn cascade_delete_removes_relations() {
     let mut conn = test_db();
 
     let a = store_memory(
-        &mut conn, "Entity A", MemoryType::Entity, Scope::Global,
-        Some("default"), 1.0, None, None, &test_embedding(0), 0.92,
-    ).unwrap().id;
+        &mut conn,
+        "Entity A",
+        MemoryType::Entity,
+        Scope::Global,
+        Some("default"),
+        1.0,
+        None,
+        None,
+        &test_embedding(0),
+        0.92,
+    )
+    .unwrap()
+    .id;
 
     let b = store_memory(
-        &mut conn, "Entity B", MemoryType::Entity, Scope::Global,
-        Some("default"), 1.0, None, None, &test_embedding(100), 0.92,
-    ).unwrap().id;
+        &mut conn,
+        "Entity B",
+        MemoryType::Entity,
+        Scope::Global,
+        Some("default"),
+        1.0,
+        None,
+        None,
+        &test_embedding(100),
+        0.92,
+    )
+    .unwrap()
+    .id;
 
     store_relation(&conn, &a, "related_to", &b).unwrap();
 
@@ -75,7 +135,12 @@ fn cascade_delete_removes_relations() {
 
     // Relation should be gone (cascade)
     let count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM entity_relations", [], |row| row.get(0))
+        .query_row("SELECT COUNT(*) FROM entity_relations", [], |row| {
+            row.get(0)
+        })
         .unwrap();
-    assert_eq!(count, 0, "cascade should remove relation when entity deleted");
+    assert_eq!(
+        count, 0,
+        "cascade should remove relation when entity deleted"
+    );
 }

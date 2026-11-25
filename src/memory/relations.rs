@@ -3,8 +3,8 @@
 //! Stores directed (subject, predicate, object) triples between entity-type memories,
 //! with automatic deduplication on the full triple.
 
-use anyhow::{bail, Result};
-use rusqlite::{params, Connection, OptionalExtension};
+use anyhow::{Result, bail};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
 
 /// Result returned from a store_relation operation.
@@ -54,16 +54,71 @@ pub fn store_relation(
     let id = uuid::Uuid::now_v7().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    conn.execute(
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
         "INSERT INTO entity_relations (id, subject_id, predicate, object_id, created_at) \
          VALUES (?1, ?2, ?3, ?4, ?5)",
         params![id, subject_id, predicate, object_id, now],
     )?;
+    crate::sync::log::emit(
+        &tx,
+        crate::sync::ops::Op::RelationPut {
+            relation: crate::sync::ops::PutRelation {
+                id: id.clone(),
+                subject_id: subject_id.to_string(),
+                predicate: predicate.to_string(),
+                object_id: object_id.to_string(),
+                created_at: now,
+            },
+        },
+    )?;
+    tx.commit()?;
 
     Ok(StoreRelationResult {
         id,
         deduplicated: false,
     })
+}
+
+/// Outcome of [`store_relation_with_id`].
+#[derive(Debug, PartialEq, Eq)]
+pub enum RelationInsert {
+    /// Inserted under the supplied ID.
+    Inserted,
+    /// A relation with this ID, or with the same (subject, predicate, object), exists.
+    Existing,
+}
+
+/// Insert a relation under an explicit ID (import, sync). Idempotent on both the
+/// ID and the (subject, predicate, object) triple. Errors if an endpoint is missing
+/// or is not an entity memory.
+pub fn store_relation_with_id(
+    conn: &Connection,
+    id: &str,
+    subject_id: &str,
+    predicate: &str,
+    object_id: &str,
+    created_at: &str,
+) -> Result<RelationInsert> {
+    validate_entity(conn, subject_id, "subject")?;
+    validate_entity(conn, object_id, "object")?;
+
+    let exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM entity_relations WHERE id = ?1 \
+         OR (subject_id = ?2 AND predicate = ?3 AND object_id = ?4)",
+        params![id, subject_id, predicate, object_id],
+        |row| row.get(0),
+    )?;
+    if exists {
+        return Ok(RelationInsert::Existing);
+    }
+
+    conn.execute(
+        "INSERT INTO entity_relations (id, subject_id, predicate, object_id, created_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, subject_id, predicate, object_id, created_at],
+    )?;
+    Ok(RelationInsert::Inserted)
 }
 
 /// Validate that a memory ID exists and is entity type.
@@ -97,6 +152,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 
@@ -198,18 +254,22 @@ mod tests {
         // Entity → Semantic should fail
         let result = store_relation(&conn, &entity_id, "related_to", &semantic_id);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("must be entity type"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("must be entity type")
+        );
 
         // Semantic → Entity should fail
         let result = store_relation(&conn, &semantic_id, "related_to", &entity_id);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("must be entity type"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("must be entity type")
+        );
     }
 
     #[test]

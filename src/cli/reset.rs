@@ -1,6 +1,6 @@
 //! CLI `reset` command — delete all memories after user confirmation.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::io::Write;
 
 use crate::config::LociConfig;
@@ -31,6 +31,9 @@ pub fn reset(config: &LociConfig) -> Result<()> {
          DELETE FROM memories_vec;
          DELETE FROM memories;",
     )?;
+    // Keep deleted content out of the replication log (and, on the next `loci sync`,
+    // out of this machine's sync file).
+    crate::sync::log::scrub_all_ops(&conn)?;
 
     println!("All memories deleted. Database reset complete.");
     Ok(())

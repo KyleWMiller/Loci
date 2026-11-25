@@ -4,7 +4,7 @@
 //! and token budgeting) and [`recall_by_ids`] (direct hydration for progressive disclosure).
 
 use anyhow::Result;
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -228,16 +228,16 @@ pub fn recall_by_query(
                 _ => continue,
             }
             // If caller specified scope filter, enforce it
-            if let Some(ref scope_filter) = filter.scope {
-                if mem.scope != scope_filter.as_str() {
-                    continue;
-                }
+            if let Some(ref scope_filter) = filter.scope
+                && mem.scope != scope_filter.as_str()
+            {
+                continue;
             }
             // Type filter
-            if let Some(ref type_filter) = filter.memory_type {
-                if mem.memory_type != type_filter.as_str() {
-                    continue;
-                }
+            if let Some(ref type_filter) = filter.memory_type
+                && mem.memory_type != type_filter.as_str()
+            {
+                continue;
             }
             // Confidence floor
             if mem.confidence < filter.min_confidence {
@@ -400,8 +400,7 @@ pub fn inspect_memory(
                     created_at: row.get(8)?,
                     updated_at: row.get(9)?,
                     superseded_by: row.get(10)?,
-                    metadata: metadata_str
-                        .and_then(|s| serde_json::from_str(&s).ok()),
+                    metadata: metadata_str.and_then(|s| serde_json::from_str(&s).ok()),
                 })
             },
         )
@@ -430,8 +429,7 @@ pub fn inspect_memory(
                 let details_str: Option<String> = row.get(1)?;
                 Ok(LogEntry {
                     operation: row.get(0)?,
-                    details: details_str
-                        .and_then(|s| serde_json::from_str(&s).ok()),
+                    details: details_str.and_then(|s| serde_json::from_str(&s).ok()),
                     created_at: row.get(2)?,
                 })
             })?
@@ -486,11 +484,7 @@ fn fetch_outbound_relations(
 }
 
 /// Vector KNN search via sqlite-vec.
-fn vector_search(
-    conn: &Connection,
-    embedding: &[f32],
-    limit: usize,
-) -> Result<Vec<(String, f64)>> {
+fn vector_search(conn: &Connection, embedding: &[f32], limit: usize) -> Result<Vec<(String, f64)>> {
     let embedding_bytes = super::embedding_to_bytes(embedding);
     let mut stmt = conn.prepare(
         "SELECT id, distance FROM memories_vec \
@@ -585,8 +579,10 @@ fn fetch_memories(conn: &Connection, ids: &[&str]) -> Result<HashMap<String, Mem
 
     let mut stmt = conn.prepare(&sql)?;
 
-    let params: Vec<&dyn rusqlite::types::ToSql> =
-        ids.iter().map(|id| id as &dyn rusqlite::types::ToSql).collect();
+    let params: Vec<&dyn rusqlite::types::ToSql> = ids
+        .iter()
+        .map(|id| id as &dyn rusqlite::types::ToSql)
+        .collect();
 
     let rows = stmt
         .query_map(params.as_slice(), |row| {
@@ -655,6 +651,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 
@@ -863,9 +860,14 @@ mod tests {
             min_confidence: 0.1,
         };
 
-        let response =
-            recall_by_query(&conn, &embedding_a(), "databases", &filter, &default_config())
-                .unwrap();
+        let response = recall_by_query(
+            &conn,
+            &embedding_a(),
+            "databases",
+            &filter,
+            &default_config(),
+        )
+        .unwrap();
 
         let ids: Vec<&str> = response.results.iter().map(|r| r.id.as_str()).collect();
         assert!(ids.contains(&id_sem.as_str()));
@@ -953,7 +955,9 @@ mod tests {
             emb[i] = 1.0;
             insert_test_memory(
                 &mut conn,
-                &format!("Memory number {i} with enough content to take up some token budget space in the response payload"),
+                &format!(
+                    "Memory number {i} with enough content to take up some token budget space in the response payload"
+                ),
                 MemoryType::Semantic,
                 Scope::Global,
                 "default",
@@ -1027,8 +1031,7 @@ mod tests {
             &embedding_b(),
         );
 
-        let response =
-            recall_by_ids(&conn, &[id_b.clone(), id_a.clone()]).unwrap();
+        let response = recall_by_ids(&conn, &[id_b.clone(), id_a.clone()]).unwrap();
 
         assert_eq!(response.results.len(), 2);
         // Order should match input
@@ -1169,7 +1172,10 @@ mod tests {
     #[test]
     fn test_escape_fts_query() {
         assert_eq!(escape_fts_query("hello world"), "\"hello\" \"world\"");
-        assert_eq!(escape_fts_query("rust OR python"), "\"rust\" \"OR\" \"python\"");
+        assert_eq!(
+            escape_fts_query("rust OR python"),
+            "\"rust\" \"OR\" \"python\""
+        );
         assert_eq!(escape_fts_query("  spaces  "), "\"spaces\"");
         assert_eq!(escape_fts_query(""), "");
     }
@@ -1220,7 +1226,10 @@ mod tests {
             .expect("person entity should be in results");
 
         assert_eq!(person_result.memory_type, "entity");
-        let relations = person_result.relations.as_ref().expect("entity should have relations");
+        let relations = person_result
+            .relations
+            .as_ref()
+            .expect("entity should have relations");
         assert_eq!(relations.len(), 1);
         assert_eq!(relations[0].predicate, "works_at");
         assert_eq!(relations[0].object.id, id_company);

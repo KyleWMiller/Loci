@@ -11,10 +11,14 @@ pub struct MemoryInspectParams {
     pub memory_id: String,
 
     /// Include outbound entity relations (default: `true`).
-    #[schemars(description = "If true, include related entities in the response. Defaults to true.")]
+    #[schemars(
+        description = "If true, include related entities in the response. Defaults to true."
+    )]
     pub include_relations: Option<bool>,
 
     /// Include audit log entries for this memory (default: `false`).
-    #[schemars(description = "If true, include audit log entries for this memory. Defaults to false.")]
+    #[schemars(
+        description = "If true, include audit log entries for this memory. Defaults to false."
+    )]
     pub include_log: Option<bool>,
 }

@@ -1,3 +1,4 @@
+#![allow(clippy::missing_transmute_annotations)]
 use rusqlite::Connection;
 use sqlite_vec::sqlite3_vec_init;
 use std::mem;
@@ -6,9 +7,7 @@ use std::mem;
 /// Must be called before opening any connections that need vec0.
 fn load_sqlite_vec() {
     unsafe {
-        rusqlite::ffi::sqlite3_auto_extension(Some(mem::transmute(
-            sqlite3_vec_init as *const (),
-        )));
+        rusqlite::ffi::sqlite3_auto_extension(Some(mem::transmute(sqlite3_vec_init as *const ())));
     }
 }
 
@@ -22,7 +21,10 @@ fn sqlite_vec_spike_end_to_end() {
     let version: String = conn
         .query_row("SELECT vec_version()", [], |r| r.get(0))
         .expect("vec_version");
-    assert!(!version.is_empty(), "sqlite-vec version should be non-empty");
+    assert!(
+        !version.is_empty(),
+        "sqlite-vec version should be non-empty"
+    );
     println!("sqlite-vec version: {version}");
 
     // Create a vec0 virtual table with 384 dimensions (matching all-MiniLM-L6-v2)
@@ -36,9 +38,8 @@ fn sqlite_vec_spike_end_to_end() {
 
     // Create a test embedding (384 floats)
     let embedding: Vec<f32> = (0..384).map(|i| (i as f32) / 384.0).collect();
-    let embedding_bytes: &[u8] = unsafe {
-        std::slice::from_raw_parts(embedding.as_ptr() as *const u8, embedding.len() * 4)
-    };
+    let embedding_bytes: &[u8] =
+        unsafe { std::slice::from_raw_parts(embedding.as_ptr() as *const u8, embedding.len() * 4) };
 
     // Insert a test vector
     conn.execute(

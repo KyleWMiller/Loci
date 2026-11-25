@@ -15,15 +15,11 @@ pub fn doctor(config: &LociConfig) -> Result<()> {
         return Ok(());
     }
 
-    let file_size = std::fs::metadata(&db_path)
-        .map(|m| m.len())
-        .unwrap_or(0);
+    let file_size = std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
 
-    let conn = db::open_database(&db_path)
-        .context("failed to open database (may be corrupt)")?;
+    let conn = db::open_database(&db_path).context("failed to open database (may be corrupt)")?;
 
-    let report = db::check_database_health(&conn)
-        .context("failed to run health check")?;
+    let report = db::check_database_health(&conn).context("failed to run health check")?;
 
     println!("Loci Health Report");
     println!("==================");
@@ -34,7 +30,10 @@ pub fn doctor(config: &LociConfig) -> Result<()> {
     println!("sqlite-vec:        v{}", report.sqlite_vec_version);
     println!();
     println!("Embedding model:");
-    println!("  Stored:          {}", report.embedding_model.as_deref().unwrap_or("(not set)"));
+    println!(
+        "  Stored:          {}",
+        report.embedding_model.as_deref().unwrap_or("(not set)")
+    );
     println!("  Configured:      {}", config.embedding.model);
     if let Some(ref stored) = report.embedding_model {
         if stored != &config.embedding.model {

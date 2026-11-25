@@ -1,24 +1,41 @@
 //! CLI `export` command — dump all memories and relations as JSON to stdout.
 
 use anyhow::Result;
+use rusqlite::Connection;
 use rusqlite::params;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config::LociConfig;
 use crate::memory::types::{EntityRelation, Memory};
 
-/// Export format — wraps all memories and relations.
-#[derive(Debug, Serialize)]
-struct ExportData {
-    memories: Vec<Memory>,
-    relations: Vec<EntityRelation>,
+/// Export format — wraps all memories and relations. Also the import format.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExportData {
+    pub memories: Vec<Memory>,
+    #[serde(default)]
+    pub relations: Vec<EntityRelation>,
 }
 
 /// Export all memories and relations as JSON to stdout.
 pub fn export(config: &LociConfig) -> Result<()> {
     let db_path = config.resolved_db_path();
     let conn = crate::db::open_database(&db_path)?;
+    let data = collect_export(&conn)?;
 
+    let json = serde_json::to_string_pretty(&data)?;
+    println!("{json}");
+
+    eprintln!(
+        "Exported {} memories and {} relations.",
+        data.memories.len(),
+        data.relations.len()
+    );
+
+    Ok(())
+}
+
+/// Read every memory and relation from the database.
+pub fn collect_export(conn: &Connection) -> Result<ExportData> {
     // Fetch all memories
     let mut stmt = conn.prepare(
         "SELECT id, type, content, source_group, scope, confidence, access_count, \
@@ -70,19 +87,8 @@ pub fn export(config: &LociConfig) -> Result<()> {
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
-    let data = ExportData {
+    Ok(ExportData {
         memories,
         relations,
-    };
-
-    let json = serde_json::to_string_pretty(&data)?;
-    println!("{json}");
-
-    eprintln!(
-        "Exported {} memories and {} relations.",
-        data.memories.len(),
-        data.relations.len()
-    );
-
-    Ok(())
+    })
 }

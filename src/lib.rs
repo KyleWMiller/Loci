@@ -1,4 +1,6 @@
-#![doc(html_logo_url = "https://raw.githubusercontent.com/KyleWMiller/Loci/main/assets/Loci-logo.png")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/KyleWMiller/Loci/main/assets/Loci-logo.png"
+)]
 
 //! <div align="center">
 //!   <img src="https://raw.githubusercontent.com/KyleWMiller/Loci/main/assets/Loci-logo.png" width="200" alt="Loci logo" />
@@ -32,8 +34,11 @@
 //! - [`embedding`] — Text-to-vector embedding pipeline via ONNX Runtime
 //! - [`memory`] — Core memory engine: store, search, forget, relations, and maintenance
 
+pub mod cli;
 pub mod config;
 pub mod db;
 pub mod embedding;
 pub mod memory;
+pub mod server;
+pub mod sync;
 pub mod tools;
