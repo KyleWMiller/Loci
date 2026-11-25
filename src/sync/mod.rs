@@ -9,6 +9,7 @@ pub mod apply;
 pub mod files;
 pub mod log;
 pub mod ops;
+pub mod status;
 
 use anyhow::{Context, Result, bail};
 use rusqlite::{Connection, params};

@@ -497,3 +497,57 @@ fn machine_id_override_validates_and_renames_file() {
     sync(&mut a, dir.path());
     assert!(dir.path().join("laptop.jsonl").exists());
 }
+
+#[test]
+fn stats_report_sync_status_and_forks() {
+    let dir = tempfile::tempdir().unwrap();
+    let (mut a, mut b) = (test_db(), test_db());
+    let x = put(
+        &mut a,
+        "synthetic base for status",
+        MemoryType::Semantic,
+        1,
+        None,
+    );
+    full_cycle(&mut a, &mut b, dir.path());
+    put(
+        &mut a,
+        "synthetic status successor a",
+        MemoryType::Semantic,
+        2,
+        Some(&x),
+    );
+    put(
+        &mut b,
+        "synthetic status successor b",
+        MemoryType::Semantic,
+        3,
+        Some(&x),
+    );
+
+    // Before syncing: two local ops are pending on each side.
+    let st = loci::memory::stats::memory_stats(&a, None, None)
+        .unwrap()
+        .sync;
+    assert_eq!(st.machine_id, machine(&a));
+    assert_eq!(st.pending_local_ops, 2);
+    assert!(st.unresolved_forks.is_empty());
+
+    full_cycle(&mut a, &mut b, dir.path());
+    let st = loci::memory::stats::memory_stats(&a, None, None)
+        .unwrap()
+        .sync;
+    assert_eq!(st.pending_local_ops, 0);
+    assert_eq!(st.deferred_ops, 0);
+    assert_eq!(st.remotes.len(), 1);
+    assert_eq!(st.remotes[0].remote, machine(&b));
+    assert!(st.remotes[0].last_sync_at.is_some());
+    assert_eq!(st.unresolved_forks.len(), 1);
+    assert_eq!(st.unresolved_forks[0].old_id, x);
+
+    // The MCP JSON gains a `sync` object; existing keys are unchanged.
+    let json =
+        serde_json::to_value(loci::memory::stats::memory_stats(&a, None, None).unwrap()).unwrap();
+    assert!(json["sync"]["machine_id"].is_string());
+    assert!(json["total_memories"].is_u64());
+}

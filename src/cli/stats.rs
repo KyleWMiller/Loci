@@ -42,5 +42,23 @@ pub fn stats(config: &LociConfig, group: Option<&str>) -> Result<()> {
         println!("Newest memory:         {newest}");
     }
 
+    let s = &response.sync;
+    println!();
+    println!("Sync:");
+    println!("  Machine ID:          {}", s.machine_id);
+    for r in &s.remotes {
+        println!(
+            "  Remote {}: last sync {}",
+            r.remote,
+            r.last_sync_at.as_deref().unwrap_or("never")
+        );
+    }
+    println!("  Pending local ops:   {}", s.pending_local_ops);
+    println!("  Deferred ops:        {}", s.deferred_ops);
+    println!("  Unresolved forks:    {}", s.unresolved_forks.len());
+    for f in &s.unresolved_forks {
+        println!("    {} -> {} (also {})", f.old_id, f.winner_id, f.other_id);
+    }
+
     Ok(())
 }

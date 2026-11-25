@@ -32,6 +32,8 @@ pub struct StatsResponse {
     /// ISO 8601 timestamp of the newest memory, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub newest_memory: Option<String>,
+    /// Replication status: machine ID, last sync per remote, deferred ops, forks.
+    pub sync: crate::sync::status::SyncStatus,
 }
 
 /// Compute memory store statistics.
@@ -64,6 +66,7 @@ pub fn memory_stats(
         db_size_bytes,
         oldest_memory: oldest,
         newest_memory: newest,
+        sync: crate::sync::status::sync_status(conn)?,
     })
 }
 
