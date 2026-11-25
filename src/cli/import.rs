@@ -14,6 +14,7 @@ use crate::cli::export::ExportData;
 use crate::config::LociConfig;
 use crate::memory::relations::{RelationInsert, store_relation_with_id};
 use crate::memory::store::{NewMemory, store_new_memory};
+use crate::sync::ops::{Op, PutRelation};
 
 /// Counts reported by [`import_data`].
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -94,6 +95,26 @@ pub fn import_data(
             "UPDATE memories SET superseded_by = ?1 WHERE id = ?2",
             params![target, id],
         )?;
+        let op = if *target == "forgotten" {
+            crate::sync::log::record_tombstone(
+                conn,
+                id,
+                false,
+                &chrono::Utc::now().to_rfc3339(),
+                None,
+                None,
+            )?;
+            Op::MemoryForget {
+                id: id.to_string(),
+                hard: false,
+            }
+        } else {
+            Op::MemorySupersede {
+                old_id: id.to_string(),
+                new_id: target.to_string(),
+            }
+        };
+        crate::sync::log::emit(conn, op)?;
         summary.supersessions_applied += 1;
     }
 
@@ -106,7 +127,21 @@ pub fn import_data(
             &rel.object_id,
             &rel.created_at,
         ) {
-            Ok(RelationInsert::Inserted) => summary.relations_created += 1,
+            Ok(RelationInsert::Inserted) => {
+                crate::sync::log::emit(
+                    conn,
+                    Op::RelationPut {
+                        relation: PutRelation {
+                            id: rel.id.clone(),
+                            subject_id: rel.subject_id.clone(),
+                            predicate: rel.predicate.clone(),
+                            object_id: rel.object_id.clone(),
+                            created_at: rel.created_at.clone(),
+                        },
+                    },
+                )?;
+                summary.relations_created += 1;
+            }
             Ok(RelationInsert::Existing) => summary.relations_existing += 1,
             Err(e) => {
                 tracing::warn!(relation = %rel.id, error = %e, "skipping relation on import");

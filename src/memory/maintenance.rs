@@ -244,6 +244,13 @@ pub fn compact_episodic(
                 "UPDATE memories SET superseded_by = ?1, updated_at = ?2 WHERE id = ?3",
                 params![store_result.id, chrono::Utc::now().to_rfc3339(), member.id],
             )?;
+            crate::sync::log::emit(
+                &tx,
+                crate::sync::ops::Op::MemorySupersede {
+                    old_id: member.id.clone(),
+                    new_id: store_result.id.clone(),
+                },
+            )?;
         }
         write_audit_log(
             &tx,
@@ -520,6 +527,20 @@ fn hard_delete_memory(conn: &mut Connection, memory_id: &str) -> Result<()> {
     // Delete from memories (cascades entity_relations via FK)
     tx.execute("DELETE FROM memories WHERE id = ?1", params![memory_id])?;
 
+    // Cleanup is local, use-driven maintenance (it depends on locally decayed
+    // confidence and access times), so it is NOT replicated as a forget op. We still
+    // tombstone the ID locally so a replayed `memory.put` cannot resurrect it, and
+    // scrub its content from the op log.
+    crate::sync::log::record_tombstone(
+        &tx,
+        memory_id,
+        true,
+        &chrono::Utc::now().to_rfc3339(),
+        None,
+        None,
+    )?;
+    crate::sync::log::scrub_memory_ops(&tx, memory_id)?;
+
     tx.commit()?;
     Ok(())
 }
@@ -536,6 +557,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 

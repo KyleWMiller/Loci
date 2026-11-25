@@ -55,6 +55,8 @@ pub fn open_database(path: impl AsRef<Path>) -> Result<Connection> {
     conn.pragma_update(None, "foreign_keys", "ON")?;
     // Wait up to 5 seconds for locks instead of failing immediately
     conn.pragma_update(None, "busy_timeout", "5000")?;
+    // Overwrite deleted content with zeros so hard deletes don't leave text in free pages.
+    conn.pragma_update(None, "secure_delete", "ON")?;
 
     schema::init_schema(&conn).context("failed to initialize schema")?;
     migrations::run_migrations(&conn).context("failed to run migrations")?;

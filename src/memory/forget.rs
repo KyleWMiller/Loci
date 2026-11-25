@@ -66,6 +66,17 @@ fn soft_delete_memory(
     });
     write_audit_log(&tx, "delete", memory_id, Some(&details))?;
 
+    // Replication: tombstone + op (the op never carries the reason)
+    let now = chrono::Utc::now().to_rfc3339();
+    crate::sync::log::record_tombstone(&tx, memory_id, false, &now, None, None)?;
+    crate::sync::log::emit(
+        &tx,
+        crate::sync::ops::Op::MemoryForget {
+            id: memory_id.to_string(),
+            hard: false,
+        },
+    )?;
+
     tx.commit()?;
 
     Ok(ForgetResult {
@@ -115,6 +126,18 @@ fn hard_delete_memory(
     // 4. Delete from memories (cascades to entity_relations via FK)
     tx.execute("DELETE FROM memories WHERE id = ?1", params![memory_id])?;
 
+    // 5. Replication: hard tombstone, scrub content from the op log, emit an ID-only op
+    let now = chrono::Utc::now().to_rfc3339();
+    crate::sync::log::record_tombstone(&tx, memory_id, true, &now, None, None)?;
+    crate::sync::log::scrub_memory_ops(&tx, memory_id)?;
+    crate::sync::log::emit(
+        &tx,
+        crate::sync::ops::Op::MemoryForget {
+            id: memory_id.to_string(),
+            hard: true,
+        },
+    )?;
+
     tx.commit()?;
 
     Ok(ForgetResult {
@@ -135,6 +158,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 

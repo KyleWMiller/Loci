@@ -46,6 +46,9 @@ pub struct NewMemory<'a> {
     pub created_at: Option<&'a str>,
     /// RFC 3339 update time (defaults to `created_at`).
     pub updated_at: Option<&'a str>,
+    /// Emit replication ops (`memory.put`, `memory.supersede`) for this insert. `true`
+    /// for every local mutation; sync apply sets it to `false` so ops never echo.
+    pub emit: bool,
 }
 
 impl<'a> NewMemory<'a> {
@@ -69,6 +72,7 @@ impl<'a> NewMemory<'a> {
             id: None,
             created_at: None,
             updated_at: None,
+            emit: true,
         }
     }
 }
@@ -190,6 +194,20 @@ pub(crate) fn store_new_memory_tx(
 
     // 7. Audit log for the new memory
     write_audit_log(tx, "create", &id, None)?;
+
+    // 8. Replication ops (same transaction as the state change)
+    if new.emit {
+        crate::sync::log::emit_put_for(tx, &id)?;
+        if let Some(old_id) = new.supersedes {
+            crate::sync::log::emit(
+                tx,
+                crate::sync::ops::Op::MemorySupersede {
+                    old_id: old_id.to_string(),
+                    new_id: id.clone(),
+                },
+            )?;
+        }
+    }
 
     Ok(StoreMemoryResult {
         id,
@@ -358,6 +376,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 

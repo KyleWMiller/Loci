@@ -40,4 +40,5 @@ pub mod db;
 pub mod embedding;
 pub mod memory;
 pub mod server;
+pub mod sync;
 pub mod tools;

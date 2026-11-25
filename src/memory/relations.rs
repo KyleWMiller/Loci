@@ -54,11 +54,25 @@ pub fn store_relation(
     let id = uuid::Uuid::now_v7().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
-    conn.execute(
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
         "INSERT INTO entity_relations (id, subject_id, predicate, object_id, created_at) \
          VALUES (?1, ?2, ?3, ?4, ?5)",
         params![id, subject_id, predicate, object_id, now],
     )?;
+    crate::sync::log::emit(
+        &tx,
+        crate::sync::ops::Op::RelationPut {
+            relation: crate::sync::ops::PutRelation {
+                id: id.clone(),
+                subject_id: subject_id.to_string(),
+                predicate: predicate.to_string(),
+                object_id: object_id.to_string(),
+                created_at: now,
+            },
+        },
+    )?;
+    tx.commit()?;
 
     Ok(StoreRelationResult {
         id,
@@ -138,6 +152,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 

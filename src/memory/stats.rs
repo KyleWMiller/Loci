@@ -199,6 +199,7 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "foreign_keys", "ON").unwrap();
         crate::db::schema::init_schema(&conn).unwrap();
+        crate::db::migrations::run_migrations(&conn).unwrap();
         conn
     }
 
