@@ -1,12 +1,11 @@
+#![allow(clippy::missing_transmute_annotations)]
 use rusqlite::Connection;
 use sqlite_vec::sqlite3_vec_init;
 use std::mem;
 
 fn load_sqlite_vec() {
     unsafe {
-        rusqlite::ffi::sqlite3_auto_extension(Some(mem::transmute(
-            sqlite3_vec_init as *const (),
-        )));
+        rusqlite::ffi::sqlite3_auto_extension(Some(mem::transmute(sqlite3_vec_init as *const ())));
     }
 }
 
@@ -89,17 +88,28 @@ fn full_schema_creates_all_tables_and_indexes() {
         .collect::<Result<Vec<_>, _>>()
         .unwrap();
 
-    assert!(tables.contains(&"memories".to_string()), "memories table missing");
+    assert!(
+        tables.contains(&"memories".to_string()),
+        "memories table missing"
+    );
     assert!(
         tables.contains(&"entity_relations".to_string()),
         "entity_relations table missing"
     );
-    assert!(tables.contains(&"memory_log".to_string()), "memory_log table missing");
-    assert!(tables.contains(&"schema_meta".to_string()), "schema_meta table missing");
+    assert!(
+        tables.contains(&"memory_log".to_string()),
+        "memory_log table missing"
+    );
+    assert!(
+        tables.contains(&"schema_meta".to_string()),
+        "schema_meta table missing"
+    );
 
     // Verify indexes
     let indexes: Vec<String> = conn
-        .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%' ORDER BY name")
+        .prepare(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%' ORDER BY name",
+        )
         .unwrap()
         .query_map([], |row| row.get(0))
         .unwrap()
@@ -130,9 +140,8 @@ fn full_schema_creates_all_tables_and_indexes() {
 
     // Insert and query a test vector to confirm vec0 is functional
     let embedding: Vec<f32> = (0..384).map(|i| (i as f32) / 384.0).collect();
-    let embedding_bytes: &[u8] = unsafe {
-        std::slice::from_raw_parts(embedding.as_ptr() as *const u8, embedding.len() * 4)
-    };
+    let embedding_bytes: &[u8] =
+        unsafe { std::slice::from_raw_parts(embedding.as_ptr() as *const u8, embedding.len() * 4) };
 
     conn.execute(
         "INSERT INTO memories_vec (id, embedding) VALUES (?, ?)",
@@ -159,7 +168,10 @@ fn full_schema_creates_all_tables_and_indexes() {
          VALUES ('test-2', 'invalid_type', 'bad', '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z')",
         [],
     );
-    assert!(result.is_err(), "invalid type should be rejected by CHECK constraint");
+    assert!(
+        result.is_err(),
+        "invalid type should be rejected by CHECK constraint"
+    );
 
     println!("Full schema integration test PASSED");
 }

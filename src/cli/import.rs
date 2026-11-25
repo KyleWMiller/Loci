@@ -25,8 +25,7 @@ pub async fn import(config: &LociConfig, file: &Path) -> Result<()> {
     let json = std::fs::read_to_string(file)
         .with_context(|| format!("failed to read import file: {}", file.display()))?;
 
-    let data: ImportData =
-        serde_json::from_str(&json).context("failed to parse import JSON")?;
+    let data: ImportData = serde_json::from_str(&json).context("failed to parse import JSON")?;
 
     let db_path = config.resolved_db_path();
     let mut conn = crate::db::open_database(&db_path)?;

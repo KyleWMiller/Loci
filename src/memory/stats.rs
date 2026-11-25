@@ -4,7 +4,7 @@
 //! database size, and timestamp ranges, with an optional group filter.
 
 use anyhow::Result;
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -151,11 +151,9 @@ fn count_by_scope(conn: &Connection, group: Option<&str>) -> Result<HashMap<Stri
 
 /// Count total entity relations.
 fn count_relations(conn: &Connection) -> Result<u64> {
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM entity_relations",
-        [],
-        |row| row.get(0),
-    )?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM entity_relations", [], |row| {
+        row.get(0)
+    })?;
     Ok(count as u64)
 }
 
@@ -165,9 +163,7 @@ fn memory_time_range(
     group: Option<&str>,
 ) -> Result<(Option<String>, Option<String>)> {
     let (where_clause, param) = group_filter(group);
-    let sql = format!(
-        "SELECT MIN(created_at), MAX(created_at) FROM memories {where_clause}"
-    );
+    let sql = format!("SELECT MIN(created_at), MAX(created_at) FROM memories {where_clause}");
 
     let (oldest, newest): (Option<String>, Option<String>) = if let Some(ref g) = param {
         conn.query_row(&sql, params![g], |row| Ok((row.get(0)?, row.get(1)?)))?
@@ -212,10 +208,28 @@ mod tests {
         v
     }
 
-    fn insert(conn: &mut Connection, content: &str, mt: MemoryType, scope: Scope, group: &str, dim: usize) -> String {
-        store::store_memory(conn, content, mt, scope, Some(group), 1.0, None, None, &embedding(dim), 0.92)
-            .unwrap()
-            .id
+    fn insert(
+        conn: &mut Connection,
+        content: &str,
+        mt: MemoryType,
+        scope: Scope,
+        group: &str,
+        dim: usize,
+    ) -> String {
+        store::store_memory(
+            conn,
+            content,
+            mt,
+            scope,
+            Some(group),
+            1.0,
+            None,
+            None,
+            &embedding(dim),
+            0.92,
+        )
+        .unwrap()
+        .id
     }
 
     #[test]
@@ -235,10 +249,38 @@ mod tests {
     #[test]
     fn test_stats_counts_by_type_and_scope() {
         let mut conn = test_db();
-        insert(&mut conn, "Fact one", MemoryType::Semantic, Scope::Global, "default", 0);
-        insert(&mut conn, "Fact two", MemoryType::Semantic, Scope::Global, "default", 1);
-        insert(&mut conn, "Event one", MemoryType::Episodic, Scope::Group, "default", 2);
-        insert(&mut conn, "Entity one", MemoryType::Entity, Scope::Global, "default", 3);
+        insert(
+            &mut conn,
+            "Fact one",
+            MemoryType::Semantic,
+            Scope::Global,
+            "default",
+            0,
+        );
+        insert(
+            &mut conn,
+            "Fact two",
+            MemoryType::Semantic,
+            Scope::Global,
+            "default",
+            1,
+        );
+        insert(
+            &mut conn,
+            "Event one",
+            MemoryType::Episodic,
+            Scope::Group,
+            "default",
+            2,
+        );
+        insert(
+            &mut conn,
+            "Entity one",
+            MemoryType::Entity,
+            Scope::Global,
+            "default",
+            3,
+        );
 
         let stats = memory_stats(&conn, None, None).unwrap();
         assert_eq!(stats.total_memories, 4);
@@ -255,11 +297,27 @@ mod tests {
     #[test]
     fn test_stats_with_superseded() {
         let mut conn = test_db();
-        let id_old = insert(&mut conn, "Old fact", MemoryType::Semantic, Scope::Global, "default", 0);
+        let id_old = insert(
+            &mut conn,
+            "Old fact",
+            MemoryType::Semantic,
+            Scope::Global,
+            "default",
+            0,
+        );
         store::store_memory(
-            &mut conn, "New fact", MemoryType::Semantic, Scope::Global,
-            Some("default"), 1.0, None, Some(&id_old), &embedding(1), 0.92,
-        ).unwrap();
+            &mut conn,
+            "New fact",
+            MemoryType::Semantic,
+            Scope::Global,
+            Some("default"),
+            1.0,
+            None,
+            Some(&id_old),
+            &embedding(1),
+            0.92,
+        )
+        .unwrap();
 
         let stats = memory_stats(&conn, None, None).unwrap();
         assert_eq!(stats.total_memories, 2);
@@ -270,9 +328,30 @@ mod tests {
     #[test]
     fn test_stats_group_filter() {
         let mut conn = test_db();
-        insert(&mut conn, "Global fact", MemoryType::Semantic, Scope::Global, "project-a", 0);
-        insert(&mut conn, "Group A event", MemoryType::Episodic, Scope::Group, "project-a", 1);
-        insert(&mut conn, "Group B event", MemoryType::Episodic, Scope::Group, "project-b", 2);
+        insert(
+            &mut conn,
+            "Global fact",
+            MemoryType::Semantic,
+            Scope::Global,
+            "project-a",
+            0,
+        );
+        insert(
+            &mut conn,
+            "Group A event",
+            MemoryType::Episodic,
+            Scope::Group,
+            "project-a",
+            1,
+        );
+        insert(
+            &mut conn,
+            "Group B event",
+            MemoryType::Episodic,
+            Scope::Group,
+            "project-b",
+            2,
+        );
 
         let stats = memory_stats(&conn, Some("project-a"), None).unwrap();
         assert_eq!(stats.total_memories, 2);
@@ -283,8 +362,22 @@ mod tests {
     #[test]
     fn test_stats_timestamps() {
         let mut conn = test_db();
-        insert(&mut conn, "First memory", MemoryType::Semantic, Scope::Global, "default", 0);
-        insert(&mut conn, "Second memory", MemoryType::Semantic, Scope::Global, "default", 1);
+        insert(
+            &mut conn,
+            "First memory",
+            MemoryType::Semantic,
+            Scope::Global,
+            "default",
+            0,
+        );
+        insert(
+            &mut conn,
+            "Second memory",
+            MemoryType::Semantic,
+            Scope::Global,
+            "default",
+            1,
+        );
 
         let stats = memory_stats(&conn, None, None).unwrap();
         assert!(stats.oldest_memory.is_some());
@@ -294,8 +387,22 @@ mod tests {
     #[test]
     fn test_stats_entity_relations_count() {
         let mut conn = test_db();
-        let id_a = insert(&mut conn, "Person A", MemoryType::Entity, Scope::Global, "default", 0);
-        let id_b = insert(&mut conn, "Person B", MemoryType::Entity, Scope::Global, "default", 1);
+        let id_a = insert(
+            &mut conn,
+            "Person A",
+            MemoryType::Entity,
+            Scope::Global,
+            "default",
+            0,
+        );
+        let id_b = insert(
+            &mut conn,
+            "Person B",
+            MemoryType::Entity,
+            Scope::Global,
+            "default",
+            1,
+        );
         crate::memory::relations::store_relation(&conn, &id_a, "knows", &id_b).unwrap();
 
         let stats = memory_stats(&conn, None, None).unwrap();

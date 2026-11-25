@@ -54,7 +54,11 @@ pub fn set_embedding_model(conn: &Connection, model: &str) -> rusqlite::Result<(
 /// Run any pending forward-only migrations. Each migration runs in a transaction.
 pub fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     let mut version = get_schema_version(conn)?;
-    tracing::debug!(schema_version = version, target = CURRENT_SCHEMA_VERSION, "checking migrations");
+    tracing::debug!(
+        schema_version = version,
+        target = CURRENT_SCHEMA_VERSION,
+        "checking migrations"
+    );
 
     while version < CURRENT_SCHEMA_VERSION {
         let next = version + 1;

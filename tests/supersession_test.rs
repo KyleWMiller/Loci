@@ -1,7 +1,7 @@
 mod helpers;
 
 use helpers::{test_db, test_embedding};
-use loci::memory::search::{recall_by_query, SearchConfig, SearchFilter};
+use loci::memory::search::{SearchConfig, SearchFilter, recall_by_query};
 use loci::memory::store::store_memory;
 use loci::memory::types::{MemoryType, Scope};
 
@@ -59,6 +59,12 @@ fn superseded_memory_excluded_from_search() {
 
     let response = recall_by_query(&conn, &emb_a, "user prefers", &filter, &config).unwrap();
     let ids: Vec<&str> = response.results.iter().map(|r| r.id.as_str()).collect();
-    assert!(!ids.contains(&result_a.id.as_str()), "superseded memory should be excluded");
-    assert!(ids.contains(&result_b.id.as_str()), "replacement should be found");
+    assert!(
+        !ids.contains(&result_a.id.as_str()),
+        "superseded memory should be excluded"
+    );
+    assert!(
+        ids.contains(&result_b.id.as_str()),
+        "replacement should be found"
+    );
 }

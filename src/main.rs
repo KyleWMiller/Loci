@@ -12,7 +12,11 @@ use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
-#[command(name = "loci", version, about = "Cognitive memory MCP server for AI agents")]
+#[command(
+    name = "loci",
+    version,
+    about = "Cognitive memory MCP server for AI agents"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -87,8 +91,8 @@ async fn main() -> Result<()> {
 
     // Initialize tracing with the configured log level.
     // Log to stderr so stdout stays clean for MCP JSON-RPC.
-    let filter = EnvFilter::try_new(&config.server.log_level)
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let filter =
+        EnvFilter::try_new(&config.server.log_level).unwrap_or_else(|_| EnvFilter::new("info"));
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
@@ -100,9 +104,7 @@ async fn main() -> Result<()> {
             match transport {
                 "stdio" => server::serve_stdio(config).await?,
                 "sse" => server::serve_sse(config).await?,
-                other => anyhow::bail!(
-                    "unknown transport '{other}'. Supported: stdio, sse"
-                ),
+                other => anyhow::bail!("unknown transport '{other}'. Supported: stdio, sse"),
             }
         }
         Command::Model { action } => match action {

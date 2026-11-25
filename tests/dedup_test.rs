@@ -41,7 +41,10 @@ fn dedup_merges_similar_same_type() {
 
     // Should be deduplicated — same type, high cosine similarity
     assert!(result_b.deduplicated);
-    assert_eq!(result_b.id, result_a.id, "should return the existing memory ID");
+    assert_eq!(
+        result_b.id, result_a.id,
+        "should return the existing memory ID"
+    );
 }
 
 #[test]

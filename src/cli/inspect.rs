@@ -32,31 +32,31 @@ pub fn inspect(config: &LociConfig, id: &str) -> Result<()> {
     println!("Content:");
     println!("  {}", m.content);
 
-    if let Some(ref relations) = response.relations {
-        if !relations.is_empty() {
-            println!();
-            println!("Relations:");
-            for rel in relations {
-                println!(
-                    "  --[{}]--> {} ({}: {})",
-                    rel.predicate, rel.object.id, rel.object.memory_type, rel.object.preview,
-                );
-            }
+    if let Some(ref relations) = response.relations
+        && !relations.is_empty()
+    {
+        println!();
+        println!("Relations:");
+        for rel in relations {
+            println!(
+                "  --[{}]--> {} ({}: {})",
+                rel.predicate, rel.object.id, rel.object.memory_type, rel.object.preview,
+            );
         }
     }
 
-    if let Some(ref log) = response.log {
-        if !log.is_empty() {
-            println!();
-            println!("Audit Log:");
-            for entry in log {
-                let details = entry
-                    .details
-                    .as_ref()
-                    .map(|d| d.to_string())
-                    .unwrap_or_default();
-                println!("  {} [{}] {}", entry.created_at, entry.operation, details);
-            }
+    if let Some(ref log) = response.log
+        && !log.is_empty()
+    {
+        println!();
+        println!("Audit Log:");
+        for entry in log {
+            let details = entry
+                .details
+                .as_ref()
+                .map(|d| d.to_string())
+                .unwrap_or_default();
+            println!("  {} [{}] {}", entry.created_at, entry.operation, details);
         }
     }
 

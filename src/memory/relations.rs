@@ -3,8 +3,8 @@
 //! Stores directed (subject, predicate, object) triples between entity-type memories,
 //! with automatic deduplication on the full triple.
 
-use anyhow::{bail, Result};
-use rusqlite::{params, Connection, OptionalExtension};
+use anyhow::{Result, bail};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::Serialize;
 
 /// Result returned from a store_relation operation.
@@ -198,18 +198,22 @@ mod tests {
         // Entity → Semantic should fail
         let result = store_relation(&conn, &entity_id, "related_to", &semantic_id);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("must be entity type"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("must be entity type")
+        );
 
         // Semantic → Entity should fail
         let result = store_relation(&conn, &semantic_id, "related_to", &entity_id);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("must be entity type"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("must be entity type")
+        );
     }
 
     #[test]

@@ -3,8 +3,8 @@
 //! Soft delete marks a memory as superseded (by "forgotten"); hard delete permanently
 //! removes it from the memories table, FTS5 index, vector index, and cascades to relations.
 
-use anyhow::{bail, Result};
-use rusqlite::{params, Connection};
+use anyhow::{Result, bail};
+use rusqlite::{Connection, params};
 use serde::Serialize;
 
 use super::store::write_audit_log;
@@ -103,10 +103,7 @@ fn hard_delete_memory(
     )?;
 
     // 2. Remove from vector table
-    tx.execute(
-        "DELETE FROM memories_vec WHERE id = ?1",
-        params![memory_id],
-    )?;
+    tx.execute("DELETE FROM memories_vec WHERE id = ?1", params![memory_id])?;
 
     // 3. Audit log (before deleting memory row, since we reference memory_id as text)
     let details = serde_json::json!({

@@ -1,4 +1,6 @@
-#![doc(html_logo_url = "https://raw.githubusercontent.com/KyleWMiller/Loci/main/assets/Loci-logo.png")]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/KyleWMiller/Loci/main/assets/Loci-logo.png"
+)]
 
 //! <div align="center">
 //!   <img src="https://raw.githubusercontent.com/KyleWMiller/Loci/main/assets/Loci-logo.png" width="200" alt="Loci logo" />

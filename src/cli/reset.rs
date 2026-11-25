@@ -1,6 +1,6 @@
 //! CLI `reset` command — delete all memories after user confirmation.
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use std::io::Write;
 
 use crate::config::LociConfig;

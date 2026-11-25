@@ -10,7 +10,7 @@ use ort::session::Session;
 use ort::value::Tensor;
 use tokenizers::Tokenizer;
 
-use super::{EmbeddingProvider, EMBEDDING_DIM};
+use super::{EMBEDDING_DIM, EmbeddingProvider};
 use crate::config::EmbeddingConfig;
 
 /// Maximum sequence length for all-MiniLM-L6-v2 (trained at 256).
@@ -112,12 +112,13 @@ impl EmbeddingProvider for LocalEmbeddingProvider {
         let shape = vec![batch_size as i64, seq_len as i64];
         let input_ids_tensor =
             Tensor::from_array((shape.clone(), input_ids_flat.into_boxed_slice()))?;
-        let attention_mask_tensor =
-            Tensor::from_array((shape.clone(), attention_mask_flat.clone().into_boxed_slice()))?;
+        let attention_mask_tensor = Tensor::from_array((
+            shape.clone(),
+            attention_mask_flat.clone().into_boxed_slice(),
+        ))?;
         // token_type_ids: all zeros (single sentence, no segment B)
         let token_type_ids = vec![0i64; batch_size * seq_len];
-        let token_type_ids_tensor =
-            Tensor::from_array((shape, token_type_ids.into_boxed_slice()))?;
+        let token_type_ids_tensor = Tensor::from_array((shape, token_type_ids.into_boxed_slice()))?;
 
         // Step 3: Run ONNX inference
         let mut session = self
@@ -142,7 +143,7 @@ impl EmbeddingProvider for LocalEmbeddingProvider {
             .try_extract_tensor::<f32>()
             .context("failed to extract token_embeddings tensor")?;
 
-        let dims: &[i64] = &shape;
+        let dims: &[i64] = shape;
         anyhow::ensure!(
             dims.len() == 3 && dims[2] == EMBEDDING_DIM as i64,
             "unexpected token_embeddings shape: {dims:?}, expected [batch, seq, {EMBEDDING_DIM}]"
@@ -168,8 +169,8 @@ impl EmbeddingProvider for LocalEmbeddingProvider {
             }
 
             if count > 0.0 {
-                for d in 0..hidden_dim {
-                    sum[d] /= count;
+                for v in sum.iter_mut().take(hidden_dim) {
+                    *v /= count;
                 }
             }
 

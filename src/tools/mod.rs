@@ -17,7 +17,7 @@ use memory_stats::MemoryStatsParams;
 use recall_memory::RecallMemoryParams;
 use rmcp::handler::server::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::{tool, tool_handler, tool_router, ServerHandler};
+use rmcp::{ServerHandler, tool, tool_handler, tool_router};
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 use store_memory::StoreMemoryParams;
@@ -53,7 +53,9 @@ impl LociTools {
     }
 
     /// Store a new memory in the cognitive memory system.
-    #[tool(description = "Store a new memory. Types: episodic (events/experiences), semantic (facts/knowledge), procedural (how-to/processes), entity (people/places/things).")]
+    #[tool(
+        description = "Store a new memory. Types: episodic (events/experiences), semantic (facts/knowledge), procedural (how-to/processes), entity (people/places/things)."
+    )]
     pub async fn store_memory(
         &self,
         Parameters(params): Parameters<StoreMemoryParams>,
@@ -91,12 +93,11 @@ impl LociTools {
         // 2. Embed content (CPU-heavy → spawn_blocking)
         let embedding_provider = Arc::clone(&self.embedding);
         let content_for_embed = params.content.clone();
-        let embedding = tokio::task::spawn_blocking(move || {
-            embedding_provider.embed(&content_for_embed)
-        })
-        .await
-        .map_err(|e| format!("embedding task failed: {e}"))?
-        .map_err(|e| format!("embedding failed: {e}"))?;
+        let embedding =
+            tokio::task::spawn_blocking(move || embedding_provider.embed(&content_for_embed))
+                .await
+                .map_err(|e| format!("embedding task failed: {e}"))?
+                .map_err(|e| format!("embedding failed: {e}"))?;
 
         // 3. Run write path (sync DB ops → spawn_blocking)
         let db = Arc::clone(&self.db);
@@ -137,7 +138,9 @@ impl LociTools {
     }
 
     /// Search and retrieve memories using natural language queries.
-    #[tool(description = "Search memories by natural language query. Returns ranked results using hybrid vector + keyword search. Provide 'query' for search or 'ids' for direct hydration.")]
+    #[tool(
+        description = "Search memories by natural language query. Returns ranked results using hybrid vector + keyword search. Provide 'query' for search or 'ids' for direct hydration."
+    )]
     pub async fn recall_memory(
         &self,
         Parameters(params): Parameters<RecallMemoryParams>,
@@ -159,7 +162,9 @@ impl LociTools {
             tracing::info!(count = ids.len(), "recall_memory: hydrating by IDs");
             let db = Arc::clone(&self.db);
             let response = tokio::task::spawn_blocking(move || {
-                let conn = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+                let conn = db
+                    .lock()
+                    .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
                 crate::memory::search::recall_by_ids(&conn, &ids)
             })
             .await
@@ -182,27 +187,24 @@ impl LociTools {
         // Embed the query
         let embedding_provider = Arc::clone(&self.embedding);
         let query_for_embed = query.clone();
-        let query_embedding = tokio::task::spawn_blocking(move || {
-            embedding_provider.embed(&query_for_embed)
-        })
-        .await
-        .map_err(|e| format!("embedding task failed: {e}"))?
-        .map_err(|e| format!("embedding failed: {e}"))?;
+        let query_embedding =
+            tokio::task::spawn_blocking(move || embedding_provider.embed(&query_for_embed))
+                .await
+                .map_err(|e| format!("embedding task failed: {e}"))?
+                .map_err(|e| format!("embedding failed: {e}"))?;
 
         // Parse optional filters
         let memory_type = params
             .r#type
             .as_deref()
             .map(|t| t.parse::<MemoryType>())
-            .transpose()
-            .map_err(|e| e)?;
+            .transpose()?;
 
         let scope = params
             .scope
             .as_deref()
             .map(|s| s.parse::<Scope>())
-            .transpose()
-            .map_err(|e| e)?;
+            .transpose()?;
 
         let max_results = params
             .max_results
@@ -233,7 +235,9 @@ impl LociTools {
         // Run hybrid search
         let db = Arc::clone(&self.db);
         let response = tokio::task::spawn_blocking(move || {
-            let conn = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+            let conn = db
+                .lock()
+                .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
             crate::memory::search::recall_by_query(
                 &conn,
                 &query_embedding,
@@ -263,7 +267,9 @@ impl LociTools {
     }
 
     /// Forget a memory by ID (soft-supersede or hard delete).
-    #[tool(description = "Forget a memory by ID. Soft delete (default) marks it as superseded. Hard delete permanently removes it from all tables including vectors and FTS index.")]
+    #[tool(
+        description = "Forget a memory by ID. Soft delete (default) marks it as superseded. Hard delete permanently removes it from all tables including vectors and FTS index."
+    )]
     pub async fn forget_memory(
         &self,
         Parameters(params): Parameters<ForgetMemoryParams>,
@@ -308,7 +314,9 @@ impl LociTools {
     }
 
     /// Get statistics about the memory store.
-    #[tool(description = "Get memory store statistics: counts by type and scope, entity relations count, storage size, oldest/newest timestamps.")]
+    #[tool(
+        description = "Get memory store statistics: counts by type and scope, entity relations count, storage size, oldest/newest timestamps."
+    )]
     pub async fn memory_stats(
         &self,
         Parameters(params): Parameters<MemoryStatsParams>,
@@ -333,7 +341,9 @@ impl LociTools {
     }
 
     /// Inspect a specific memory by ID.
-    #[tool(description = "Inspect a memory by ID. Returns full content, metadata, confidence, access history, and optionally related entities and audit log.")]
+    #[tool(
+        description = "Inspect a memory by ID. Returns full content, metadata, confidence, access history, and optionally related entities and audit log."
+    )]
     pub async fn memory_inspect(
         &self,
         Parameters(params): Parameters<MemoryInspectParams>,
@@ -346,7 +356,9 @@ impl LociTools {
 
         let db = Arc::clone(&self.db);
         let response = tokio::task::spawn_blocking(move || {
-            let conn = db.lock().map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
+            let conn = db
+                .lock()
+                .map_err(|e| anyhow::anyhow!("db lock poisoned: {e}"))?;
             crate::memory::search::inspect_memory(&conn, &memory_id, include_relations, include_log)
         })
         .await
@@ -357,7 +369,9 @@ impl LociTools {
     }
 
     /// Store a relationship between two entity memories.
-    #[tool(description = "Create a relationship between two entity memories (e.g. 'works_at', 'manages', 'part_of'). Both IDs must refer to entity-type memories. Idempotent on (subject, predicate, object).")]
+    #[tool(
+        description = "Create a relationship between two entity memories (e.g. 'works_at', 'manages', 'part_of'). Both IDs must refer to entity-type memories. Idempotent on (subject, predicate, object)."
+    )]
     pub async fn store_relation(
         &self,
         Parameters(params): Parameters<StoreRelationParams>,

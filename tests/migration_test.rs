@@ -1,7 +1,9 @@
 mod helpers;
 
 use loci::db;
-use loci::db::migrations::{get_schema_version, run_migrations, get_embedding_model, CURRENT_SCHEMA_VERSION};
+use loci::db::migrations::{
+    CURRENT_SCHEMA_VERSION, get_embedding_model, get_schema_version, run_migrations,
+};
 
 #[test]
 fn fresh_db_migrates_to_current_version() {

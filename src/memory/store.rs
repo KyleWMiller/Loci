@@ -4,8 +4,8 @@
 //! transaction: dedup check via vector similarity, insert into the memories table, sync
 //! FTS5 index, insert embedding vector, handle supersession, and write an audit log.
 
-use anyhow::{bail, Result};
-use rusqlite::{params, Connection, Transaction};
+use anyhow::{Result, bail};
+use rusqlite::{Connection, Transaction, params};
 use serde::Serialize;
 
 use crate::memory::types::{MemoryType, Scope};
@@ -27,6 +27,7 @@ pub struct StoreMemoryResult {
 /// Full write path: dedup check → insert or update → FTS sync → vec insert → audit log.
 ///
 /// All operations run inside a transaction for atomicity.
+#[allow(clippy::too_many_arguments)]
 pub fn store_memory(
     conn: &mut Connection,
     content: &str,
@@ -145,10 +146,11 @@ fn check_dedup(
             )
             .optional()?;
 
-        if let Some((candidate_type, superseded_by)) = row {
-            if candidate_type == memory_type.as_str() && superseded_by.is_none() {
-                return Ok(Some(candidate_id));
-            }
+        if let Some((candidate_type, superseded_by)) = row
+            && candidate_type == memory_type.as_str()
+            && superseded_by.is_none()
+        {
+            return Ok(Some(candidate_id));
         }
     }
 
@@ -166,6 +168,7 @@ fn update_dedup_match(conn: &Transaction, memory_id: &str) -> Result<()> {
 }
 
 /// Insert a new memory row. Returns the SQLite rowid for FTS5 sync.
+#[allow(clippy::too_many_arguments)]
 fn insert_memory(
     conn: &Transaction,
     id: &str,
@@ -177,7 +180,7 @@ fn insert_memory(
     metadata: Option<&serde_json::Value>,
 ) -> Result<i64> {
     let now = chrono::Utc::now().to_rfc3339();
-    let metadata_json = metadata.map(|m| serde_json::to_string(m)).transpose()?;
+    let metadata_json = metadata.map(serde_json::to_string).transpose()?;
 
     conn.execute(
         "INSERT INTO memories (id, type, content, source_group, scope, confidence, access_count, created_at, updated_at, metadata) \

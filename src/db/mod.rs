@@ -17,9 +17,14 @@ static SQLITE_VEC_INIT: Once = Once::new();
 /// Register the sqlite-vec extension globally. Safe to call multiple times.
 pub fn load_sqlite_vec() {
     SQLITE_VEC_INIT.call_once(|| unsafe {
-        rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
-            sqlite3_vec_init as *const (),
-        )));
+        rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute::<
+            *const (),
+            unsafe extern "C" fn(
+                *mut rusqlite::ffi::sqlite3,
+                *mut *mut std::os::raw::c_char,
+                *const rusqlite::ffi::sqlite3_api_routines,
+            ) -> std::os::raw::c_int,
+        >(sqlite3_vec_init as *const ())));
     });
 }
 
@@ -90,11 +95,11 @@ pub struct HealthReport {
 
 /// Run a comprehensive health check on the database.
 pub fn check_database_health(conn: &Connection) -> Result<HealthReport> {
-    let schema_version = migrations::get_schema_version(conn)
-        .context("failed to read schema version")?;
+    let schema_version =
+        migrations::get_schema_version(conn).context("failed to read schema version")?;
 
-    let embedding_model = migrations::get_embedding_model(conn)
-        .context("failed to read embedding model")?;
+    let embedding_model =
+        migrations::get_embedding_model(conn).context("failed to read embedding model")?;
 
     let integrity_details: String = conn
         .pragma_query_value(None, "integrity_check", |row| row.get(0))
@@ -110,7 +115,9 @@ pub fn check_database_health(conn: &Connection) -> Result<HealthReport> {
         .unwrap_or(0);
 
     let relation_count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM entity_relations", [], |row| row.get(0))
+        .query_row("SELECT COUNT(*) FROM entity_relations", [], |row| {
+            row.get(0)
+        })
         .unwrap_or(0);
 
     let log_count: i64 = conn
@@ -131,6 +138,7 @@ pub fn check_database_health(conn: &Connection) -> Result<HealthReport> {
 
 /// Open an in-memory database for testing.
 #[cfg(test)]
+#[allow(dead_code)]
 pub fn open_memory_database() -> Result<Connection> {
     load_sqlite_vec();
     let conn = Connection::open_in_memory().context("failed to open in-memory database")?;

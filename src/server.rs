@@ -11,28 +11,29 @@ use anyhow::Result;
 use rmcp::ServiceExt;
 use std::sync::{Arc, Mutex};
 
-/// Shared setup: open DB, create embedding provider, check model version.
-/// Returns (db, embedding, config) wrapped in Arc for sharing.
-fn setup_shared_state(
-    config: LociConfig,
-) -> Result<(
+/// Shared server state: database, embedding provider, config.
+type SharedState = (
     Arc<Mutex<rusqlite::Connection>>,
     Arc<dyn embedding::EmbeddingProvider>,
     Arc<LociConfig>,
-)> {
+);
+
+/// Shared setup: open DB, create embedding provider, check model version.
+/// Returns (db, embedding, config) wrapped in Arc for sharing.
+fn setup_shared_state(config: LociConfig) -> Result<SharedState> {
     let db_path = config.resolved_db_path();
     let conn = db::open_database(&db_path)?;
     tracing::info!(db = %db_path.display(), "database ready");
 
     // Check for embedding model mismatch
-    if let Ok(Some(stored_model)) = db::migrations::get_embedding_model(&conn) {
-        if stored_model != config.embedding.model {
-            tracing::warn!(
-                stored = %stored_model,
-                configured = %config.embedding.model,
-                "embedding model changed — run `loci re-embed` to update all vectors"
-            );
-        }
+    if let Ok(Some(stored_model)) = db::migrations::get_embedding_model(&conn)
+        && stored_model != config.embedding.model
+    {
+        tracing::warn!(
+            stored = %stored_model,
+            configured = %config.embedding.model,
+            "embedding model changed — run `loci re-embed` to update all vectors"
+        );
     }
 
     let db = Arc::new(Mutex::new(conn));
@@ -75,7 +76,13 @@ pub async fn serve_sse(config: LociConfig) -> Result<()> {
     let (db, embedding, config) = setup_shared_state(config)?;
 
     let service = rmcp::transport::streamable_http_server::StreamableHttpService::new(
-        move || Ok(LociTools::new(db.clone(), embedding.clone(), config.clone())),
+        move || {
+            Ok(LociTools::new(
+                db.clone(),
+                embedding.clone(),
+                config.clone(),
+            ))
+        },
         rmcp::transport::streamable_http_server::session::local::LocalSessionManager::default()
             .into(),
         Default::default(),
