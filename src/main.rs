@@ -1,13 +1,6 @@
-mod cli;
-mod config;
-mod db;
-mod embedding;
-mod memory;
-mod server;
-mod tools;
-
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use loci::{cli, config, server};
 use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 

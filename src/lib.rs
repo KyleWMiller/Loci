@@ -34,8 +34,10 @@
 //! - [`embedding`] — Text-to-vector embedding pipeline via ONNX Runtime
 //! - [`memory`] — Core memory engine: store, search, forget, relations, and maintenance
 
+pub mod cli;
 pub mod config;
 pub mod db;
 pub mod embedding;
 pub mod memory;
+pub mod server;
 pub mod tools;
