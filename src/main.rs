@@ -61,6 +61,11 @@ enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+    /// Replicate memories with other machines through a shared directory
+    Sync {
+        /// Sync directory (default: `[sync] dir` from config)
+        dir: Option<PathBuf>,
+    },
     /// Run database diagnostics and health check
     Doctor,
     /// Re-embed all memories with the currently configured model
@@ -131,6 +136,9 @@ async fn main() -> Result<()> {
         }
         Command::Cleanup { dry_run } => {
             cli::maintenance::cleanup(&config, dry_run)?;
+        }
+        Command::Sync { dir } => {
+            cli::sync::sync(&config, dir.as_deref())?;
         }
         Command::Doctor => {
             cli::doctor::doctor(&config)?;

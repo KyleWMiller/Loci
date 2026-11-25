@@ -33,3 +33,7 @@ promotion_threshold = 3                   # Similar episodics needed to promote 
 promotion_similarity = 0.88              # Cosine similarity threshold for promotion clustering
 cleanup_confidence_floor = 0.05           # Memories below this confidence are cleanup candidates
 cleanup_no_access_days = 90               # Days without access before cleanup eligibility
+
+[sync]
+# dir = "~/loci-sync"                     # Directory shared between machines (rsync/unison), used by `loci sync`
+# machine_id = "laptop"                   # Optional stable name; default is a generated UUIDv7

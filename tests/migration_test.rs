@@ -110,7 +110,7 @@ fn v0_2_3_database_migrates_in_place() {
     // The real open path: init_schema (IF NOT EXISTS) then migrations.
     let conn = db::open_database(&path).unwrap();
     assert_eq!(get_schema_version(&conn).unwrap(), CURRENT_SCHEMA_VERSION);
-    assert_eq!(CURRENT_SCHEMA_VERSION, 3);
+    assert_eq!(CURRENT_SCHEMA_VERSION, 4);
 
     // Existing data untouched.
     let n: i64 = conn
@@ -137,7 +137,13 @@ fn v0_2_3_database_migrates_in_place() {
     // New machinery present, machine_id stable across reopen.
     let id = loci::db::migrations::get_machine_id(&conn).unwrap();
     assert_eq!(uuid::Uuid::parse_str(&id).unwrap().get_version_num(), 7);
-    for t in ["op_log", "sync_state", "tombstones", "supersede_forks"] {
+    for t in [
+        "op_log",
+        "sync_state",
+        "tombstones",
+        "supersede_forks",
+        "supersessions",
+    ] {
         conn.query_row(&format!("SELECT COUNT(*) FROM {t}"), [], |r| {
             r.get::<_, i64>(0)
         })

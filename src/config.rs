@@ -23,6 +23,18 @@ pub struct LociConfig {
     pub retrieval: RetrievalConfig,
     /// Lifecycle management (decay, compaction, promotion, cleanup).
     pub maintenance: MaintenanceConfig,
+    /// Multi-machine replication settings (`loci sync`).
+    pub sync: SyncConfig,
+}
+
+/// Replication settings. Both fields are optional.
+#[derive(Debug, Deserialize, Clone, Default)]
+#[serde(default)]
+pub struct SyncConfig {
+    /// Default directory for `loci sync` (supports `~` expansion).
+    pub dir: Option<String>,
+    /// Override this database's stable `machine_id` (letters, digits, `-`, `_`, `.`).
+    pub machine_id: Option<String>,
 }
 
 /// MCP server transport and logging settings.

@@ -19,7 +19,25 @@ pub fn emit(conn: &Connection, op: Op) -> Result<()> {
         origin,
         op,
     };
+    if let Op::MemorySupersede { old_id, new_id } = &env.op {
+        record_supersession(conn, old_id, new_id, &env.ts, &env.op_id)?;
+    }
     insert_op_log(conn, &env)
+}
+
+/// Remember which op (by `ts`, `op_id`) set `old_id`'s `superseded_by`.
+pub fn record_supersession(
+    conn: &Connection,
+    old_id: &str,
+    new_id: &str,
+    ts: &str,
+    op_id: &str,
+) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO supersessions (old_id, new_id, ts, op_id) VALUES (?1, ?2, ?3, ?4)",
+        params![old_id, new_id, ts, op_id],
+    )?;
+    Ok(())
 }
 
 fn insert_op_log(conn: &Connection, env: &OpEnvelope) -> Result<()> {
