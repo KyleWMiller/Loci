@@ -66,6 +66,47 @@ pub fn store_relation(
     })
 }
 
+/// Outcome of [`store_relation_with_id`].
+#[derive(Debug, PartialEq, Eq)]
+pub enum RelationInsert {
+    /// Inserted under the supplied ID.
+    Inserted,
+    /// A relation with this ID, or with the same (subject, predicate, object), exists.
+    Existing,
+}
+
+/// Insert a relation under an explicit ID (import, sync). Idempotent on both the
+/// ID and the (subject, predicate, object) triple. Errors if an endpoint is missing
+/// or is not an entity memory.
+pub fn store_relation_with_id(
+    conn: &Connection,
+    id: &str,
+    subject_id: &str,
+    predicate: &str,
+    object_id: &str,
+    created_at: &str,
+) -> Result<RelationInsert> {
+    validate_entity(conn, subject_id, "subject")?;
+    validate_entity(conn, object_id, "object")?;
+
+    let exists: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM entity_relations WHERE id = ?1 \
+         OR (subject_id = ?2 AND predicate = ?3 AND object_id = ?4)",
+        params![id, subject_id, predicate, object_id],
+        |row| row.get(0),
+    )?;
+    if exists {
+        return Ok(RelationInsert::Existing);
+    }
+
+    conn.execute(
+        "INSERT INTO entity_relations (id, subject_id, predicate, object_id, created_at) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, subject_id, predicate, object_id, created_at],
+    )?;
+    Ok(RelationInsert::Inserted)
+}
+
 /// Validate that a memory ID exists and is entity type.
 fn validate_entity(conn: &Connection, memory_id: &str, role: &str) -> Result<()> {
     let row: Option<String> = conn
